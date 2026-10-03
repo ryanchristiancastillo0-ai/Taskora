@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pages probe</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      ;(function () {
+        var p = new URLSearchParams(location.search)
+        var w = p.get('w')
+        if (!w) return
+        var h = p.get('h') || '900'
+        document.body.style.margin = '0'
+        var f = document.createElement('iframe')
+        f.style.width = w + 'px'
+        f.style.height = h + 'px'
+        f.style.border = '0'
+        var inner = new URLSearchParams()
+        inner.set('route', p.get('route') || '/admin')
+        // The probe inside the iframe posts under this name, so it has to be
+        // passed in - otherwise every width overwrites one "pages" file.
+        inner.set('as', p.get('as') || 'pages')
+        if (p.get('q')) inner.set('q', p.get('q'))
+        f.src = '/pages.html?' + inner.toString()
+        document.body.appendChild(f)
+      })()
+    </script>
+    <script type="module" src="/src/__pages.jsx"></script>
+  </body>
+</html>

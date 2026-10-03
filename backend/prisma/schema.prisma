@@ -1,0 +1,1366 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ====================
+// ENUMS
+// ====================
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+// What an account is allowed to do. Deliberately two values: Taskora has no
+// permission matrix, so a boolean `isAdmin` would be the same information with
+// worse naming. Promote someone with UserRole ADMIN in the admin console.
+//
+// The access token does NOT carry this. It is read from the database on every
+// admin request by adminGuard, so revoking admin takes effect immediately instead
+// of waiting for the token to expire.
+enum UserRole {
+  USER
+  ADMIN
+}
+
+// Whether the account may sign in and act. Separate from whether the person is
+// still active: a long-dormant account is not suspended, and a suspended account
+// may be perfectly active by last-seen measures. Suspension also revokes refresh
+// tokens, so "suspend" is a real cut rather than a UI label.
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum HabitFrequency {
+  DAILY
+  WEEKLY
+  CUSTOM
+}
+
+enum AIMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum NotificationType {
+  TASK_DUE
+  TASK_REMINDER
+  PROJECT_UPDATE
+  AI_SUGGESTION
+  SYSTEM
+  FRIEND_REQUEST
+  NEW_MESSAGE
+  TASK_PATTERN_SUGGESTION
+
+  // Admin-directed notifications. These are the first types in the enum that
+  // are addressed to a list of recipients resolved at send time (every active
+  // admin) rather than to the single user whose action caused them.
+  NEW_USER
+  NEW_SUPPORT_REQUEST
+
+  // Support ticket lifecycle, delivered to the user who opened the ticket.
+  SUPPORT_STATUS_CHANGED
+}
+
+// How a detected task pattern repeats. `intervalDays` holds the exact
+// average interval; the frequency type is a human-friendly label.
+enum PatternFrequency {
+  EVERY_DAYS
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum SuggestionStatus {
+  PENDING
+  ACCEPTED
+  SKIPPED
+  EXPIRED
+}
+
+// The lifecycle of one admin copilot ask. Deliberately three states and no
+// "ANSWERING": the widget shows a single waiting state, and a client that could
+// tell them apart would have to poll faster to stay in sync with no gain.
+enum AdminCopilotStatus {
+  PENDING
+  ANSWERED
+  FAILED
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+// Whether a single attachment renders as an inline image or a file chip.
+enum AttachmentKind {
+  IMAGE
+  FILE
+}
+
+// ====================
+// PERSONALIZATION / AI ENUMS
+// ====================
+
+enum AIProvider {
+  GEMINI
+  OPENROUTER
+}
+
+enum WorkStyle {
+  LONG_FOCUSED_SESSIONS
+  SHORT_FOCUSED_SESSIONS
+  FLEXIBLE
+  VARIED
+}
+
+enum PlanningStyle {
+  DAILY
+  WEEKLY
+  MONTHLY
+  MINIMALIST
+  DETAILED
+}
+
+enum TaskOrganization {
+  BY_PRIORITY
+  BY_PROJECT
+  BY_DEADLINE
+  BY_ENERGY
+}
+
+enum TimeOfDay {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+  VARIES
+}
+
+enum BreakPreference {
+  FREQUENT_SHORT_BREAKS
+  LONG_BREAKS
+  NO_BREAKS
+}
+
+enum ReminderPreference {
+  NONE
+  MINIMAL
+  MODERATE
+  FREQUENT
+}
+
+enum DifficultyLevel {
+  NONE
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum TaskDetailLevel {
+  HIGH_LEVEL
+  MEDIUM
+  GRANULAR
+}
+
+enum AIResponseStyle {
+  CONCISE
+  DETAILED
+  FRIENDLY
+  DIRECT
+}
+
+// ====================
+// USER
+// ====================
+
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+
+  firstName String
+  lastName  String?
+  avatarUrl String?
+  bio       String?
+
+  // Admin console. `role` gates the console routes; `status` is what an admin
+  // toggles from the users page. Both are indexed because the console filters
+  // on them and scans the whole table.
+  role   UserRole   @default(USER)
+  status UserStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings               UserSettings?
+  notificationSettings   NotificationSettings?
+  personalizationProfile PersonalizationProfile?
+  adminProfile           AdminProfile?
+
+  projects Project[]
+  tasks    Task[]
+  subtasks Subtask[]
+  notes    Note[]
+  goals    Goal[]
+  habits   Habit[]
+  tags     Tag[]
+
+  sentFriendRequests     FriendRequest[] @relation("FriendRequestSender")
+  receivedFriendRequests FriendRequest[] @relation("FriendRequestReceiver")
+
+  friendshipsAsA Friendship[] @relation("FriendshipA")
+  friendshipsAsB Friendship[] @relation("FriendshipB")
+
+  conversationMembers ConversationMember[]
+  messages            Message[]
+  messageReactions    MessageReaction[]
+
+  conversations AIConversation[]
+  notifications Notification[]
+
+  // The admin console's own copilot history. Separate from `conversations` on
+  // purpose: these asks are answered from platform-wide aggregates and are only
+  // ever visible to the admin who asked them, so they must not share a table
+  // with the per-user assistant threads.
+  copilotExchanges AdminCopilotExchange[]
+
+  // Every audited action this account performed. Nullable on AuditLog rather
+  // than required, so a failed sign-in attempt — which has no account to point
+  // at — is still recordable. See the AuditLog model for why the relation is
+  // SetNull.
+  auditLogs AuditLog[]
+
+  taskPatterns    TaskPattern[]
+  taskSuggestions TaskSuggestion[]
+
+  // Support desk. A user opens tickets and rates the support experience; both
+  // belong to the account and are removed with it.
+  supportRequests SupportRequest[]
+  supportFeedback  SupportFeedback[]
+
+  refreshTokens      RefreshToken[]
+  passwordResetCodes PasswordResetCode[]
+  emailChangeCodes   EmailChangeCode[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model RefreshToken {
+  id     String @id @default(cuid())
+  userId String
+
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  deviceId   String?
+  deviceName String?
+  deviceType String?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetCode {
+  id     String @id @default(cuid())
+  userId String
+
+  codeHash String
+
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Verifying a change of email address needs its own table rather than reusing
+// PasswordResetCode: the code is sent to the NEW address, so the row has to
+// remember which address that was. A shared table would let a password-reset
+// code be spent on an email change and vice versa.
+model EmailChangeCode {
+  id     String @id @default(cuid())
+  userId String
+
+  // The address being moved to. Held in plain text because the verification
+  // step has to compare against it, and it is never a secret the mail alone
+  // reveals.
+  newEmail String
+
+  codeHash String
+
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ====================
+// USER SETTINGS
+// ====================
+model UserSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  theme    Theme  @default(SYSTEM)
+  language String @default("en")
+  timezone String @default("Asia/Manila")
+
+  compactMode        Boolean @default(false)
+  showCompletedTasks Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ====================
+// NOTIFICATION SETTINGS
+// ====================
+
+model NotificationSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  taskReminders     Boolean @default(true)
+  deadlineReminders Boolean @default(true)
+  projectUpdates    Boolean @default(true)
+  aiSuggestions     Boolean @default(true)
+  dailySummary      Boolean @default(true)
+
+  emailNotifications Boolean @default(false)
+  pushNotifications  Boolean @default(true)
+
+  // Master switch for the alert tone. Kept separate from notificationSoundId so
+  // muting never disturbs which clip is selected, and unmuting restores it.
+  //
+  // Off by default: an account is never audible until someone asks to be. Rows
+  // written before this flipped keep whatever they chose, so the change is
+  // applied to new accounts only.
+  soundEnabled Boolean @default(false)
+
+  // Selected alert sound. Null means "use the default", so a user who turns the
+  // tone on without picking anything gets the original notification bell.
+  notificationSoundId String?
+  notificationSound   NotificationSound? @relation(fields: [notificationSoundId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([notificationSoundId])
+}
+
+// ====================
+// PROJECT
+// ====================
+
+model Project {
+  id     String @id @default(cuid())
+  userId String
+
+  name        String
+  description String?
+
+  // Project appearance
+  imageUrl String?
+  iconUrl  String?
+  color    String?
+
+  status ProjectStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  @@index([userId])
+}
+
+// ====================
+// TASK
+// ====================
+
+model Task {
+  id        String  @id @default(cuid())
+  userId    String
+  projectId String?
+
+  title       String
+  description String?
+
+  // Main task image / cover
+  imageUrl String?
+
+  status   TaskStatus   @default(TODO)
+  priority TaskPriority @default(MEDIUM)
+
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  estimatedMinutes Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  subtasks Subtask[]
+
+  tags TaskTag[]
+
+  attachments TaskAttachment[]
+
+  notifications Notification[]
+
+  createdFromSuggestions TaskSuggestion[] @relation("TaskCreatedFromSuggestion")
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+}
+
+// ====================
+// SUBTASK
+// ====================
+
+model Subtask {
+  id     String @id @default(cuid())
+  taskId String
+  userId String
+
+  title     String
+  completed Boolean @default(false)
+
+  position Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+// ====================
+// TASK ATTACHMENT
+// ====================
+
+model TaskAttachment {
+  id     String @id @default(cuid())
+  taskId String
+
+  url      String
+  fileName String?
+  fileType String?
+  fileSize Int?
+
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+// ====================
+// TAG
+// ====================
+
+model Tag {
+  id     String @id @default(cuid())
+  userId String
+
+  name  String
+  color String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tasks TaskTag[]
+
+  @@unique([userId, name])
+}
+
+// ====================
+// TASK TAG
+// ====================
+
+model TaskTag {
+  taskId String
+  tagId  String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+}
+
+// ====================
+// NOTE
+// ====================
+
+model Note {
+  id        String  @id @default(cuid())
+  userId    String
+  projectId String?
+
+  title   String
+  // Note bodies are long-form; VARCHAR(191) cut them off.
+  content String @db.Text
+
+  // Note cover/image
+  imageUrl String?
+
+  pinned   Boolean   @default(false)
+  pinnedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([userId, pinned])
+}
+
+// ====================
+// GOAL
+// ====================
+
+model Goal {
+  id     String @id @default(cuid())
+  userId String
+
+  title       String
+  description String?
+
+  // Goal appearance
+  imageUrl String?
+  iconUrl  String?
+
+  // Drives the badge colour on the card. Kept in sync with GOAL_CATEGORIES in
+  // frontend/src/shared/constants.
+  category String @default("CAREER")
+
+  targetDate DateTime?
+  progress   Int       @default(0)
+
+  status GoalStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ====================
+// HABIT
+// ====================
+
+model Habit {
+  id     String @id @default(cuid())
+  userId String
+
+  name      String
+  frequency HabitFrequency @default(DAILY)
+
+  // Tracks the current streak; kept in sync with completions on toggle.
+  streak Int @default(0)
+
+  // Habit appearance
+  color String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  completions HabitCompletion[]
+
+  @@index([userId])
+}
+
+// One row per day a habit was completed. `date` is stored as "YYYY-MM-DD"
+// (local time) to avoid MySQL timezone shifting.
+model HabitCompletion {
+  id      String @id @default(cuid())
+  habitId String
+
+  date String
+
+  createdAt DateTime @default(now())
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([habitId])
+}
+
+// ====================
+// COMMUNITY / MESSENGER
+// ====================
+
+// Friend requests form the graph: an accepted request becomes a Friendship.
+model FriendRequest {
+  id         String @id @default(cuid())
+  senderId   String
+  receiverId String
+
+  status FriendRequestStatus @default(PENDING)
+
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  sender   User @relation("FriendRequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("FriendRequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@index([senderId, status])
+}
+
+// Accepted friendship. userAId/userBId are kept normalized (A < B) so the pair
+// is unique regardless of who requested whom.
+model Friendship {
+  id      String @id @default(cuid())
+  userAId String
+  userBId String
+
+  createdAt DateTime @default(now())
+
+  userA User @relation("FriendshipA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("FriendshipB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+// A messenger conversation: either a 1:1 DIRECT thread or a GROUP.
+model Conversation {
+  id   String           @id @default(cuid())
+  type ConversationType @default(DIRECT)
+
+  // Group fields
+  name        String?
+  iconUrl     String?
+  createdById String?
+
+  lastMessageAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  ConversationMember[]
+  messages Message[]
+
+  // Chat notifications that deep-link back into this conversation.
+  notifications Notification[]
+
+  @@index([type])
+  @@index([lastMessageAt])
+}
+
+model ConversationMember {
+  id             String @id @default(cuid())
+  conversationId String
+  userId         String
+
+  role MemberRole @default(MEMBER)
+
+  lastReadAt DateTime?
+
+  joinedAt DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String @id @default(cuid())
+  conversationId String
+  senderId       String
+
+  type MessageType @default(TEXT)
+
+  // Validation allows 5000 characters, so this must not stay VARCHAR(191) or
+  // longer messages are silently truncated by MySQL.
+  content String? @db.Text
+
+  // Attachment (file / image), served from /uploads
+  attachmentUrl String?
+  fileName      String?
+  fileType      String?
+  fileSize      Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  attachments MessageAttachment[]
+  reactions   MessageReaction[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+// One row per file/image attached to a message. Lets a single message carry
+// many files while the Message row still owns the text content.
+model MessageAttachment {
+  id        String         @id @default(cuid())
+  messageId String
+  url       String
+  fileName  String?
+  fileType  String?
+  fileSize  Int?
+  kind      AttachmentKind @default(FILE)
+  position  Int            @default(0)
+
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+// Many-to-many between Message and User. The unique key on
+// (messageId, userId) means each user holds at most one reaction per message,
+// so picking a different emoji swaps it instead of inflating the count.
+model MessageReaction {
+  id        String @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+}
+
+// ====================
+// PERSONALIZATION PROFILE
+// ====================
+
+model PersonalizationProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Identity / context for AI personalization
+  preferredName             String?
+  occupationOrRole          String?
+  productivityGoal          String?
+  // Work / productivity habits
+  workStyle                 WorkStyle?
+  planningStyle             PlanningStyle?
+  preferredTaskOrganization TaskOrganization?
+  mostProductiveTime        TimeOfDay?
+  usualStartTime            String?
+  usualEndTime              String?
+  averageFocusDuration      Int?
+  breakPreference           BreakPreference?
+
+  // Task / reminder / focus preferences
+  reminderPreference       ReminderPreference?
+  difficultyStartingTasks  DifficultyLevel?
+  difficultyFinishingTasks DifficultyLevel?
+  preferredTaskDetailLevel TaskDetailLevel?
+
+  // AI interaction preferences
+  preferredAIResponseStyle AIResponseStyle?
+  aiProvider               AIProvider       @default(GEMINI)
+
+  onboardingCompleted Boolean @default(false)
+  onboardingStarted   Boolean @default(false)
+  onboardingSkipped   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ====================
+// ADMIN PROFILE
+// ====================
+
+// The administrator's own setup, kept in its own table rather than added to
+// PersonalizationProfile.
+//
+// The reason is one-directional contamination. PersonalizationProfile is the
+// single source the user assistant is personalized from: buildSafeProfileContext
+// whitelists 17 fields off it and aiContextBuilder drops them into the system
+// prompt verbatim. Writing administrator fields there would put them in front of
+// a user-facing model prompt. Keeping them apart makes that impossible by
+// construction instead of by remembering to exclude them.
+//
+// Deliberately NOT duplicated from UserSettings/NotificationSettings. An admin is
+// still an account: they keep their theme, timezone, sound and notification
+// preferences on those existing models, and this table only holds what is
+// genuinely about administering the platform.
+model AdminProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // How the admin is addressed inside the console. Null until setup runs, which
+  // is the same signal the setup gate uses to decide they have not been through
+  // it yet.
+  displayName String?
+  jobTitle    String?
+  workspace   String?
+
+  // Which provider answers the admin copilot. Copilot never reads
+  // PersonalizationProfile.aiProvider, so an admin's provider choice has to be
+  // recorded here or the copilot would keep resolving the user-side default.
+  aiProvider AIProvider @default(GEMINI)
+
+  // The gate. `setupCompleted` is what requireAdminSetup reads, and it defaults
+  // false so every existing admin — including the seeded one — is sent through
+  // setup exactly once. A missing row means the same thing as false.
+  setupStarted   Boolean @default(false)
+  setupCompleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([setupCompleted])
+}
+
+// ====================
+// AI CONVERSATION
+// ====================
+
+model AIConversation {
+  id     String @id @default(cuid())
+  userId String
+
+  title String?
+
+  pinned   Boolean   @default(false)
+  pinnedAt DateTime?
+
+  isSpeak Boolean @default(false)
+
+  // Selected TTS voice for speaking replies (null = provider default).
+  voiceId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  messages AIMessage[]
+
+  @@index([userId])
+}
+
+// ====================
+// AI MESSAGE
+// ====================
+
+model AIMessage {
+  id             String @id @default(cuid())
+  conversationId String
+
+  role String
+  // TEXT, not the VARCHAR(191) a bare String maps to on MySQL. Model replies run
+  // to thousands of characters and were being cut off mid-sentence.
+  content String @db.Text
+
+  attachments Json?
+
+  createdAt DateTime @default(now())
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+// ====================
+// NOTIFICATION
+// ====================
+
+model Notification {
+  id     String  @id @default(cuid())
+  userId String
+  taskId String?
+
+  title   String
+  // Notification copy is composed from message and attachment text, so it runs
+  // well past 191 characters.
+  message String @db.Text
+
+  type NotificationType
+
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  taskSuggestionId String?
+  taskSuggestion   TaskSuggestion? @relation(fields: [taskSuggestionId], references: [id], onDelete: Cascade)
+
+  // Set for chat notifications so the client can jump straight to the
+  // conversation. Null for task/friend/system notifications.
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([taskId])
+  @@index([taskSuggestionId])
+  @@index([conversationId])
+  @@index([readAt])
+}
+
+// ====================
+// NOTIFICATION SOUND
+// ====================
+
+// An audio clip a user can pick as their notification alert. Rows hold metadata
+// only — the audio itself lives on disk under uploads/notifications and is
+// served by the existing /uploads static mount, so `path` stays a relative URL
+// and no binary ever reaches MySQL. `path` is unique because two sounds cannot
+// share one file, which also lets the seed upsert idempotently.
+model NotificationSound {
+  id String @id @default(cuid())
+
+  name        String
+  path        String  @unique
+  description String?
+
+  // The sound played for users who have not picked one. The seed marks exactly
+  // one row; resolution falls back to the oldest row if the flag is ever unset.
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userSettings NotificationSettings[]
+
+  @@index([isDefault])
+}
+
+// ====================
+// ADMIN COPILOT
+// ====================
+
+// One question an admin asked the copilot, and the answer that came back for it.
+//
+// This exists so the copilot behaves like the user-side assistant: the ask is
+// durable the moment it is accepted. `ask` writes the question, hands the
+// provider call to a BullMQ job and returns immediately, so an admin who
+// navigates to another page, closes the tab or loses wifi still finds the
+// answer waiting when they come back. Before this, the answer lived only in the
+// browser tab, and a request in flight was discarded the moment the widget
+// unmounted — the provider tokens were already spent and the reply was lost.
+//
+// `status` is what the client polls. PENDING covers both "queued" and "being
+// written", because the widget renders one waiting state for the two and the
+// difference is not actionable. A job that exhausts its retries writes FAILED
+// with the reason, so a dead question reads as dead rather than spinning
+// forever. `error` is a short operator-facing string, never the raw provider
+// response, which can carry an API key in a header echo.
+model AdminCopilotExchange {
+  id     String @id @default(cuid())
+  adminId String
+
+  question String @db.Text
+
+  // NULL until the worker writes it. The client must treat a null answer on a
+  // PENDING row as "not yet", never as an empty answer.
+  answer  String? @db.Text
+  status  AdminCopilotStatus @default(PENDING)
+  error   String?
+  // The provider that answered, so the widget can say which model replied and a
+  // support question ("why is this slow") has something to point at.
+  provider String?
+
+  // The BullMQ job id. Kept so a stuck PENDING row can be traced back to the
+  // queue, and so a retried job is recognisable as the same ask.
+  jobId String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  answeredAt DateTime?
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  // The console loads the newest slice of one admin's history on every poll and
+  // on every page load, so (adminId, createdAt) is the access path.
+  @@index([adminId, createdAt])
+  @@index([status])
+}
+
+// ====================
+// AUDIT LOG
+// ====================
+
+// One security- or data-relevant thing that happened, and who did it.
+//
+// Scope is deliberately narrow. This records the actions an administrator has to
+// be able to answer for afterwards — sign-ins, credential and email changes,
+// role/status changes, and deletions — rather than every write the API performs.
+// A log that records every routine update stops being read within a week, and
+// the rows that matter are the ones nobody had time to look for.
+//
+// `userId` is NULLABLE, and that is the whole design constraint here. A failed
+// sign-in is exactly the event worth recording and it has no account behind it,
+// because the credentials did not match an account — or the address does not
+// exist at all. The attempted address goes in `details` instead, so an admin
+// investigating a burst of failures can see the target without the table needing
+// a phantom user row per attempt.
+//
+// The relation is `SetNull`, not `Cascade`. Deleting an account is the single
+// most audit-relevant event in the product, and a cascading delete would erase
+// the record of everything that account did in the same statement that recorded
+// its deletion. The trail outlives the person; that is the point of a trail.
+model AuditLog {
+  id String @id @default(cuid())
+
+  // The actor. Null for a failed sign-in, and null forever after if the account
+  // is later deleted.
+  userId String?
+
+  // A stable, greppable verb such as AUTH_LOGIN_SUCCEEDED or TASK_DELETED.
+  // Stored as a String rather than an enum for the same reason
+  // AIMessage.role is: adding an audited action is a code change plus a
+  // migration, and a half-applied enum in MySQL locks the table. The frontend
+  // carries the label/tone map in shared/constants so the human-readable name
+  // still has exactly one definition.
+  action String
+
+  // What was acted on, e.g. "User", "Task", "Project". Grouped with action so a
+  // console can answer "show me every project deletion" without parsing strings.
+  entity String
+
+  // The id of the row that was acted on. Null where there was no row yet — a
+  // rejected sign-in, a refused self-demotion — which is why this is not a
+  // foreign key. `oldValue` carries the identity for those cases.
+  entityId String?
+
+  // Small, operator-facing context: the attempted address on a failed sign-in,
+  // the reason a self-demotion was refused. Sanitized on write, so a secret
+  // cannot reach here even if a caller passes one.
+  details Json?
+
+  // The before/after pair for a change. Null for creations and deletions.
+  oldValue Json?
+  newValue Json?
+
+  // The connecting address and client. A real user-agent is routinely longer
+  // than the VARCHAR(191) a bare String maps to on MySQL, so this is widened
+  // rather than silently truncated mid-token.
+  ipAddress String?
+  userAgent String? @db.VarChar(512)
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // The console's default listing is every action, newest first, so createdAt is
+  // the access path for the overwhelming majority of reads. The rest are the
+  // filters the page offers; none of them is a covering index because each is
+  // used on its own, and a composite per pair would multiply write cost for
+  // queries nobody runs.
+  @@index([createdAt])
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([entityId])
+}
+
+// ====================
+// TASK PATTERN DETECTION
+// ====================
+
+// A deterministic, detected recurring pattern for one normalized task
+// title. `normalizedTitle` drives grouping/counts; `taskTitle` keeps the
+// most recent original casing for display. Dates are stored as
+// "YYYY-MM-DD" (server-local) like HabitCompletion to avoid MySQL
+// timezone shifting.
+model TaskPattern {
+  id     String @id @default(cuid())
+  userId String
+
+  taskTitle       String
+  normalizedTitle String
+
+  frequencyType PatternFrequency
+  intervalDays  Int
+
+  confidence      Float
+  lastOccurrence  String
+  nextOccurrence  String
+  occurrenceCount Int
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  suggestions TaskSuggestion[]
+
+  @@unique([userId, normalizedTitle])
+  @@index([userId, active, nextOccurrence])
+}
+
+// A single "you usually do X around this time" suggestion generated for a
+// detected pattern. A suggestion never auto-creates a task; the user must
+// accept it. Unique on (patternId, suggestedDate) so the scheduler can
+// never create duplicates for the same pattern/day.
+model TaskSuggestion {
+  id        String @id @default(cuid())
+  userId    String
+  patternId String
+
+  suggestedDate String
+  status        SuggestionStatus @default(PENDING)
+
+  createdTaskId String?
+
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pattern TaskPattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  task Task? @relation("TaskCreatedFromSuggestion", fields: [createdTaskId], references: [id], onDelete: SetNull)
+
+  createdNotifications Notification[]
+
+  @@unique([patternId, suggestedDate])
+  @@index([userId, status])
+  @@index([patternId])
+  @@index([suggestedDate])
+}
+
+// ====================
+// SUPPORT
+// ====================
+
+// The lifecycle of one support ticket.
+//
+// Four states, and the distinction between RESOLVED and CLOSED is deliberate:
+// RESOLVED means an admin believes the issue is handled, while CLOSED means the
+// conversation is finished and nothing further will happen on it. Both are
+// terminal for the user, but only CLOSED releases the ticket from the queue the
+// admin works through, so merging the two would make "still broken" and "done"
+// indistinguishable in the one list that decides what to work on next.
+enum SupportRequestStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// One ticket in the support desk.
+//
+// Two identifiers, deliberately. `id` is a cuid like every other model here, and
+// is what relations and ownership checks use. `ticketNumber` is the short,
+// human-quotable reference the user is shown and told to quote in correspondence
+// — the TK-1042 shape people actually read out loud. It is an Int rather than a
+// string so it sorts numerically, and it is UNIQUE so it can never address two
+// different tickets.
+//
+// `ticketNumber` is handed out by SupportCounter, not by counting rows: two
+// registrations racing would otherwise both read the same count and one insert
+// would fail on the unique index, which is a 500 the user cannot act on.
+//
+// The three path fields — category, issue, problem — are the user's guided
+// selections, stored as slugs rather than an enum. The detailed tree behind them
+// lives in the frontend's support constants and is extended without a migration;
+// a half-applied enum in MySQL locks the table, the same reasoning that keeps
+// AuditLog.action a String. `SUPPORT_CATEGORIES` in the support validator is the
+// one backend-side check, so an unknown category is rejected at the boundary
+// rather than stored as noise the admin console then has to filter.
+//
+// `description` is NULLABLE and genuinely optional. The guided flow already
+// knows category, issue and problem, so a user must be able to submit with
+// nothing typed at all; making this required would force every ticket to
+// contain a redundant retype of what they just clicked through.
+//
+// `resolutionNote` is the admin's single closing explanation. There is no reply
+// thread: an admin changes the status and leaves one note, which is enough to
+// answer "did you fix it" without inventing a second messaging architecture
+// next to the one Community already has.
+model SupportRequest {
+  id           String @id @default(cuid())
+  ticketNumber Int    @unique
+  userId       String
+
+  category String
+  issue    String
+  problem  String
+
+  // Optional. Empty or absent is a valid ticket, not an incomplete one.
+  description String? @db.Text
+
+  status SupportRequestStatus @default(OPEN)
+
+  // The admin's closing note. Null until someone resolves the ticket.
+  resolutionNote String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Set once an admin first picks the ticket up, so the queue can be sorted by
+  // real handling time rather than by the original submission date.
+  firstRespondedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+}
+
+// The sequence behind SupportRequest.ticketNumber.
+//
+// A single-row table holding one counter, incremented inside the same
+// transaction that inserts the ticket. The alternative — SELECT MAX(ticketNumber)
+// + 1 — is not safe under concurrency and would let two simultaneous tickets
+// collide on the unique index, so the number is drawn from here instead.
+//
+// The row is created lazily on first use by an upsert, so this table stays empty
+// until the product actually takes its first ticket. The fixed id is what makes
+// that upsert address exactly one row forever.
+model SupportCounter {
+  id    String @id @default("support")
+  value Int    @default(0)
+}
+
+// A user's rating of the support experience itself, independent of any ticket.
+//
+// Deliberately not FK'd to a SupportRequest. This measures whether the help
+// centre was useful, which is a question about the product and is answerable by
+// someone who never escalated — requiring a ticket would only collect opinions
+// from the already-unhappy.
+//
+// New rows rather than an update on the user: a rating is a time series, and
+// overwriting it would make "has support gotten worse" unanswerable.
+model SupportFeedback {
+  id     String @id @default(cuid())
+  userId String
+
+  // 1 to 5. Constrained in the validator; MySQL has no CHECK here on purpose,
+  // since the application is the only writer and an out-of-range value would be
+  // a bug worth surfacing rather than a constraint worth hiding behind.
+  rating Int
+
+  comment String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}

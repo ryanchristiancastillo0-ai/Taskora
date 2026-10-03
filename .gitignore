@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment — never commit real credentials.
+# backend/.env holds JWT secrets, DATABASE_URL, REDIS_URL, the AI provider keys,
+# BREVO_API_KEY and ZEROBOUNCE_API_KEY. frontend/.env holds VITE_BACKEND_URL.
+# Only the .env.example files belong in the repo.
+.env
+.env.*
+!.env.example
+
+# Uploads — user avatars and task attachments are runtime data.
+backend/uploads/
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+.vite/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
