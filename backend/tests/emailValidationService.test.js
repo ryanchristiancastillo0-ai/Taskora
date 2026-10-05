@@ -8,8 +8,8 @@ process.env.JWT_ACCESS_SECRET =
 process.env.JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "test-refresh-secret";
 
-const EmailValidationService = require("../src/services/user/emailValidationService.js");
-const AuthService = require("../src/services/user/authService.js");
+const EmailValidationService = require("../src/services/auth/emailValidationService.js");
+const AuthService = require("../src/services/auth/authService.js");
 const AppError = require("../src/utils/AppError");
 
 const API_KEY = "zb_test_key_do_not_log_me";

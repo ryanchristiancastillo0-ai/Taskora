@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useApp } from '../../context/AppContext'
-import { PRIORITY_ORDER } from '@/shared/constants/index'
-import SearchSuggest from '@/shared/components/ui/SearchSuggest'
-import Select from '@/shared/components/ui/Select'
-import SegmentedControl from '@/shared/components/ui/SegmentedControl'
-import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import { useApp } from '@/app/providers/AppContext'
+import { PRIORITY_ORDER } from '@/constants/index'
+import SearchSuggest from '@/components/ui/SearchSuggest'
+import Select from '@/components/ui/Select'
+import SegmentedControl from '@/components/ui/SegmentedControl'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 const statusOptions = [
   { value: 'ALL', label: 'All' },

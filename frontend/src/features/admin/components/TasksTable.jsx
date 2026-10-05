@@ -1,9 +1,9 @@
 import { CheckCircle2 } from 'lucide-react'
-import Badge from '@/shared/components/ui/Badge'
-import DataTable from '@/shared/components/ui/DataTable'
-import PriorityDot from '@/shared/components/ui/PriorityDot'
-import { TASK_STATUS, priorityMeta } from '@/shared/constants'
-import { formatDate, isOverdue } from '@/shared/utils/format'
+import Badge from '@/components/ui/Badge'
+import DataTable from '@/components/ui/DataTable'
+import PriorityDot from '@/components/ui/PriorityDot'
+import { TASK_STATUS, priorityMeta } from '@/constants'
+import { formatDate, isOverdue } from '@/utils/format'
 
 // System-wide task table for the admin console. Read-only by design: this page
 // exists so an admin can inspect what is happening across the platform, and task

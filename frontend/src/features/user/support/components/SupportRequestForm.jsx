@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { ArrowLeft, LifeBuoy, Send } from 'lucide-react'
-import Button from '@/shared/components/ui/Button'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
-import Textarea from '@/shared/components/ui/Textarea'
-import { issueLabel, problemLabel, supportCategoryLabel } from '../supportContent'
+import Button from '@/components/ui/Button'
+import Card, { CardHeader } from '@/components/ui/Card'
+import Textarea from '@/components/ui/Textarea'
+import { issueLabel, problemLabel, supportCategoryLabel } from '@/features/user/support/supportContent'
 
 /**
  * The submission step, pre-filled from the selections behind it.

@@ -1,6 +1,6 @@
 import { ChevronRight, LifeBuoy } from 'lucide-react'
-import Card from '@/shared/components/ui/Card'
-import { SUPPORT_CATEGORIES } from '../supportContent'
+import Card from '@/components/ui/Card'
+import { SUPPORT_CATEGORIES } from '@/features/user/support/supportContent'
 
 /**
  * The help centre's front door: one card per category, each listing the issues

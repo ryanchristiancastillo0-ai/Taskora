@@ -1,6 +1,6 @@
 import { ArrowUp, FileText, Mic, Paperclip, Sun, Volume2, X } from 'lucide-react'
-import { cx, formatBytes } from '@/shared/utils/format'
-import { ACCEPT, MAX_AI_FILES, SUGGESTIONS } from '../constants'
+import { cx, formatBytes } from '@/utils/format'
+import { ACCEPT, MAX_AI_FILES, SUGGESTIONS } from '@/features/user/ai/constants'
 
 export default function MessageComposer({
   prompt,

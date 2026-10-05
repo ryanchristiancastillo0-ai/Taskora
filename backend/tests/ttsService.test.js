@@ -1,7 +1,7 @@
 // TTS service unit tests with a mocked ElevenLabs API.
 // Run with: node tests/ttsService.test.js
 const assert = require("assert");
-const TtsService = require("../src/services/user/ttsService.js");
+const TtsService = require("../src/services/ai/ttsService.js");
 
 async function run() {
   const originalFetch = global.fetch;

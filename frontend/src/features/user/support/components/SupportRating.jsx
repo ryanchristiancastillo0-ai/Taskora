@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Star } from 'lucide-react'
-import Button from '@/shared/components/ui/Button'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
+import Button from '@/components/ui/Button'
+import Card, { CardHeader } from '@/components/ui/Card'
 
 /**
  * "How helpful was this?" — the help centre's own 1-5 rating.

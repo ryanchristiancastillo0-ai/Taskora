@@ -1,8 +1,8 @@
 import { Lock, Mail, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
-import Button from '@/shared/components/ui/Button'
-import Input from '@/shared/components/ui/Input'
-import Modal from '@/shared/components/ui/Modal'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Modal from '@/components/ui/Modal'
 
 const MIN_PASSWORD_LENGTH = 8
 

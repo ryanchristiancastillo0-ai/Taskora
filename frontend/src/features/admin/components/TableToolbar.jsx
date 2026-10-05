@@ -1,6 +1,6 @@
-import Input from '@/shared/components/ui/Input'
-import Select from '@/shared/components/ui/Select'
-import { cx } from '@/shared/utils/format'
+import Input from '@/components/ui/Input'
+import Select from '@/components/ui/Select'
+import { cx } from '@/utils/format'
 
 /**
  * The search-plus-filters row that sits above every admin table.

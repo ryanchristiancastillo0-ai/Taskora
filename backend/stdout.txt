@@ -1,0 +1,12 @@
+Database connected
+Server running on http://localhost:8080
+Socket.IO running on http://localhost:8080
+Task reminder worker started
+Task pattern suggestion worker started
+Task pattern suggestion check scheduled every 3600000ms
+AI generation worker started
+Email worker started
+Admin copilot worker started
+WebSocket client connected: bs8st41WP8o-EVglAAAA (user cmut3jgad0000v4f8k8pdmnrr)
+WebSocket client disconnected: bs8st41WP8o-EVglAAAA (client namespace disconnect)
+WebSocket client connected: 9ZtR4J6z5BhFsnryAAAB (user cmut3jgad0000v4f8k8pdmnrr)

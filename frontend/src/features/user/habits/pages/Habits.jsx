@@ -1,13 +1,13 @@
 import { Check, Flame, Plus } from 'lucide-react'
 import { useState } from 'react'
-import PageHeader from '@/shared/components/layouts/PageHeader'
-import Button from '@/shared/components/ui/Button'
-import EmptyStateModal from '@/shared/components/ui/EmptyStateModal'
-import Input from '@/shared/components/ui/Input'
-import Modal from '@/shared/components/ui/Modal'
-import Select from '@/shared/components/ui/Select'
-import { useApp } from '../../context/AppContext'
-import { cx } from '@/shared/utils/format'
+import PageHeader from '@/components/layout/PageHeader'
+import Button from '@/components/ui/Button'
+import EmptyStateModal from '@/components/ui/EmptyStateModal'
+import Input from '@/components/ui/Input'
+import Modal from '@/components/ui/Modal'
+import Select from '@/components/ui/Select'
+import { useApp } from '@/app/providers/AppContext'
+import { cx } from '@/utils/format'
 
 const FREQUENCY_OPTIONS = [
   { value: 'DAILY', label: 'Daily' },
@@ -133,7 +133,7 @@ export default function HabitsPage() {
               </option>
             ))}
           </Select>
-          <div className="mt-1 flex justify-end gap-3">
+          <div className="mt-1 flex flex-wrap justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setShowNew(false)}>
               Cancel
             </Button>

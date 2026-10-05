@@ -2,9 +2,9 @@
 // Run with: node tests/communityService.test.js
 const assert = require("assert");
 const AppError = require("../src/utils/AppError");
-const FriendshipService = require("../src/services/user/friendshipService.js");
-const ConversationService = require("../src/services/user/conversationService.js");
-const MessageService = require("../src/services/user/messageService.js");
+const FriendshipService = require("../src/services/community/friendshipService.js");
+const ConversationService = require("../src/services/community/conversationService.js");
+const MessageService = require("../src/services/community/messageService.js");
 
 function createMockPrisma(overrides = {}) {
   const state = {

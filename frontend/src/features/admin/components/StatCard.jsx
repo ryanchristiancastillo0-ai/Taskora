@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { cx } from '@/shared/utils/format'
-import Tooltip from '@/shared/components/ui/Tooltip'
+import { cx } from '@/utils/format'
+import Tooltip from '@/components/ui/Tooltip'
 
 const TONES = {
   primary: 'bg-primary-soft text-primary',

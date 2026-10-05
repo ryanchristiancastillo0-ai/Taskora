@@ -1,6 +1,6 @@
 import { ChevronRight, Home } from 'lucide-react'
-import Button from '@/shared/components/ui/Button'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
+import Button from '@/components/ui/Button'
+import Card, { CardHeader } from '@/components/ui/Card'
 import SupportSolution from './SupportSolution'
 
 /**

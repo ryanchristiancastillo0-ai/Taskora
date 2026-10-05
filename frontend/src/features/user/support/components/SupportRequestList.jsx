@@ -1,16 +1,16 @@
 import { AlertTriangle, LifeBuoy } from 'lucide-react'
-import Badge from '@/shared/components/ui/Badge'
-import Button from '@/shared/components/ui/Button'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
-import EmptyState from '@/shared/components/ui/EmptyState'
-import Spinner from '@/shared/components/ui/Spinner'
-import { formatDate, timeAgo } from '@/shared/utils/format'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Card, { CardHeader } from '@/components/ui/Card'
+import EmptyState from '@/components/ui/EmptyState'
+import Spinner from '@/components/ui/Spinner'
+import { formatDate, timeAgo } from '@/utils/format'
 import {
   issueLabel,
   problemLabel,
   supportCategoryLabel,
   supportStatusMeta,
-} from '../supportContent'
+} from '@/features/user/support/supportContent'
 
 /**
  * "My Support Requests" — everything this account has filed.

@@ -1,5 +1,5 @@
-import { PRIORITY, TASK_STATUS } from '@/shared/constants/index'
-import Badge from '@/shared/components/ui/Badge'
+import { PRIORITY, TASK_STATUS } from '@/constants/index'
+import Badge from '@/components/ui/Badge'
 
 const STATUS_TONES = {
   TODO: 'slate',

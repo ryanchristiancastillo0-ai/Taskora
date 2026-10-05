@@ -1,7 +1,7 @@
-import DataTable from '@/shared/components/ui/DataTable'
-import Badge from '@/shared/components/ui/Badge'
-import Avatar from '@/shared/components/ui/Avatar'
-import { formatDate, formatTime, timeAgo } from '@/shared/utils/format'
+import DataTable from '@/components/ui/DataTable'
+import Badge from '@/components/ui/Badge'
+import Avatar from '@/components/ui/Avatar'
+import { formatDate, formatTime, timeAgo } from '@/utils/format'
 
 // One row per completed AI request. Deliberately not a success/failure column:
 // AIMessage stores no outcome, so any such column would read "100% success"

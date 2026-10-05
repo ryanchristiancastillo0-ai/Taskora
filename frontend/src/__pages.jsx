@@ -3,21 +3,21 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
-import './index.css'
+import './styles/globals.css'
 import { AppProvider } from './__mockApp'
 // Not aliased, and genuinely required: components call useTheme, which throws
 // outside the provider. Mirrors the real composition in App.jsx.
-import { ThemeProvider } from '@/features/user/context/ThemeProvider'
-import AppShell from '@/shared/components/layouts/AppShell'
-import AdminDashboard from '@/features/admin/pages/Dashboard'
-import AdminUsers from '@/features/admin/pages/Users'
-import AdminTasks from '@/features/admin/pages/Tasks'
-import AdminProjects from '@/features/admin/pages/Projects'
-import AdminAiUsage from '@/features/admin/pages/AiUsage'
-import AdminNotifications from '@/features/admin/pages/Notifications'
-import AdminReports from '@/features/admin/pages/Reports'
-import AdminSettings from '@/features/admin/pages/Settings'
-import AdminProfile from '@/features/admin/pages/Profile'
+import { ThemeProvider } from '@/app/providers/ThemeProvider'
+import AppShell from '@/components/layout/AppShell'
+import AdminDashboard from '@/features/admin/dashboard/Dashboard'
+import AdminUsers from '@/features/admin/users/pages/Users'
+import AdminTasks from '@/features/admin/tasks/pages/Tasks'
+import AdminProjects from '@/features/admin/projects/pages/Projects'
+import AdminAiUsage from '@/features/admin/ai-usage/pages/AiUsage'
+import AdminNotifications from '@/features/admin/notifications/pages/Notifications'
+import AdminReports from '@/features/admin/reports/pages/Reports'
+import AdminSettings from '@/features/admin/settings/pages/Settings'
+import AdminProfile from '@/features/admin/profile/pages/Profile'
 
 const post = (name, body) =>
   fetch(`http://localhost:5198/report?as=${encodeURIComponent(name)}`, {

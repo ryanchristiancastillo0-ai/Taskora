@@ -1,4 +1,4 @@
-import { api } from '@/shared/api/client'
+import { api } from '@/services/api/client'
 
 /**
  * The signed-in user's side of the help centre.

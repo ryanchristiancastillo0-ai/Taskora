@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useApp } from '../../context/AppContext'
+import { useApp } from '@/app/providers/AppContext'
 
 export default function useAiSpeech({ activeConversation, speakOn, messages, renderedRef }) {
   const { actions, pushToast } = useApp()

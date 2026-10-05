@@ -1,10 +1,10 @@
 import { Mail, Sparkles, ListTodo, FolderKanban, Target, Repeat, Shield } from 'lucide-react'
-import Modal from '@/shared/components/ui/Modal'
-import Badge from '@/shared/components/ui/Badge'
-import Avatar from '@/shared/components/ui/Avatar'
-import ProgressBar from '@/shared/components/ui/ProgressBar'
-import { ACCOUNT_STATUS, ACTIVITY_STATUS } from '@/shared/constants'
-import { formatDate, timeAgo } from '@/shared/utils/format'
+import Modal from '@/components/ui/Modal'
+import Badge from '@/components/ui/Badge'
+import Avatar from '@/components/ui/Avatar'
+import ProgressBar from '@/components/ui/ProgressBar'
+import { ACCOUNT_STATUS, ACTIVITY_STATUS } from '@/constants'
+import { formatDate, timeAgo } from '@/utils/format'
 
 const COUNTS = [
   { key: 'tasks', label: 'Tasks', icon: ListTodo },

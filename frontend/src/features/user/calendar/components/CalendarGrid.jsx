@@ -1,6 +1,6 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Circle } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { calendarMatrix, cx, isToday, monthLabel } from '@/shared/utils/format'
+import { calendarMatrix, cx, isToday, monthLabel } from '@/utils/format'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 

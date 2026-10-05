@@ -10,15 +10,15 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import PageHeader from '@/shared/components/layouts/PageHeader'
-import AvatarPicker from '@/shared/components/ui/AvatarPicker'
-import Badge from '@/shared/components/ui/Badge'
-import Button from '@/shared/components/ui/Button'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
-import Input from '@/shared/components/ui/Input'
-import Modal from '@/shared/components/ui/Modal'
-import Select from '@/shared/components/ui/Select'
-import Textarea from '@/shared/components/ui/Textarea'
+import PageHeader from '@/components/layout/PageHeader'
+import AvatarPicker from '@/components/ui/AvatarPicker'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Card, { CardHeader } from '@/components/ui/Card'
+import Input from '@/components/ui/Input'
+import Modal from '@/components/ui/Modal'
+import Select from '@/components/ui/Select'
+import Textarea from '@/components/ui/Textarea'
 import {
   AI_PROVIDER_OPTIONS,
   AI_RESPONSE_STYLES,
@@ -28,11 +28,11 @@ import {
   REMINDER_PREFERENCES,
   TIME_OF_DAY,
   WORK_STYLES,
-} from '@/shared/constants/index'
-import { useApp } from '../../context/AppContext'
-import ChangeEmailModal from '../components/ChangeEmailModal'
-import ChangePasswordModal from '../components/ChangePasswordModal'
-import ForgotPasswordModal from '../components/ForgotPasswordModal'
+} from '@/constants/index'
+import { useApp } from '@/app/providers/AppContext'
+import ChangeEmailModal from '@/features/user/profile/components/ChangeEmailModal'
+import ChangePasswordModal from '@/features/user/profile/components/ChangePasswordModal'
+import ForgotPasswordModal from '@/features/user/profile/components/ForgotPasswordModal'
 
 function PrefRow({ label, value }) {
   return (
@@ -394,7 +394,7 @@ export default function ProfilePage() {
               ))}
             </Select>
           </div>
-          <div className="mt-1 flex justify-end gap-3">
+          <div className="mt-1 flex flex-wrap justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setShowPrefs(false)}>
               Cancel
             </Button>
@@ -430,7 +430,7 @@ export default function ProfilePage() {
             value={values.bio}
             onChange={(event) => setValues({ ...values, bio: event.target.value })}
           />
-          <div className="mt-1 flex justify-end gap-3">
+          <div className="mt-1 flex flex-wrap justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setShowEdit(false)}>
               Cancel
             </Button>

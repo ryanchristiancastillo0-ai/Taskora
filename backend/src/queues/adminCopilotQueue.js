@@ -1,6 +1,6 @@
 const { Queue, Worker, UnrecoverableError } = require("bullmq");
 const { redis } = require("../config/redis");
-const { isQuotaError } = require("../services/user/ai/aiProvider.js");
+const { isQuotaError } = require("../services/ai/aiProvider.js");
 
 const ADMIN_COPILOT_QUEUE = "admin-copilot";
 const ADMIN_COPILOT_JOB = "admin-copilot-ask";

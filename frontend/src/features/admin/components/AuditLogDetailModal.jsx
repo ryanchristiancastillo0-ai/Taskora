@@ -1,9 +1,9 @@
 import { Lock } from 'lucide-react'
-import Modal from '@/shared/components/ui/Modal'
-import Badge from '@/shared/components/ui/Badge'
-import Avatar from '@/shared/components/ui/Avatar'
-import { auditActionMeta } from '@/shared/constants'
-import { formatDate, timeAgo } from '@/shared/utils/format'
+import Modal from '@/components/ui/Modal'
+import Badge from '@/components/ui/Badge'
+import Avatar from '@/components/ui/Avatar'
+import { auditActionMeta } from '@/constants'
+import { formatDate, timeAgo } from '@/utils/format'
 
 function Field({ label, value, mono = false }) {
   return (

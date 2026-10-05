@@ -1,6 +1,6 @@
-import Button from '@/shared/components/ui/Button'
-import Input from '@/shared/components/ui/Input'
-import Modal from '@/shared/components/ui/Modal'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Modal from '@/components/ui/Modal'
 
 export default function RenameConversationModal({
   open,
@@ -34,7 +34,7 @@ export default function RenameConversationModal({
           onChange={(event) => onNameChange(event.target.value)}
           autoFocus
         />
-        <div className="mt-1 flex justify-end gap-3">
+        <div className="mt-1 flex flex-wrap justify-end gap-3">
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>

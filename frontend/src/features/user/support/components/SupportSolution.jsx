@@ -1,7 +1,7 @@
 import { CheckCircle2, LifeBuoy } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import Button, { buttonClasses } from '@/shared/components/ui/Button'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
+import Button, { buttonClasses } from '@/components/ui/Button'
+import Card, { CardHeader } from '@/components/ui/Card'
 
 /**
  * The answer for one problem, and the way out to a human.

@@ -49,3 +49,17 @@ process.env.ELEVENLABS_API_KEY = "";
 process.env.BREVO_API_KEY = "";
 process.env.BREVO_SENDER_EMAIL = "";
 process.env.ZEROBOUNCE_API_KEY = "";
+
+// Google Sign-In. Plausible-looking but fake, so the flow is exercised in its
+// configured state rather than short-circuiting to "not available". Nothing here
+// reaches Google: the values are read only to build the authorization URL and the
+// token request, and the suite replaces global.fetch to answer both.
+//
+// These must not look like placeholders. googleAuthService deliberately treats a
+// committed placeholder as "not configured" so a fresh clone disables the button
+// instead of sending a real request carrying "your_client_id_here", and a test
+// value starting with "your_" would quietly exercise that branch instead of the
+// one it means to.
+process.env.GOOGLE_CLIENT_ID = "test-google-client-id.apps.googleusercontent.com";
+process.env.GOOGLE_CLIENT_SECRET = "test-google-client-secret";
+process.env.GOOGLE_CALLBACK_URL = "http://localhost:8080/api/auth/google/callback";

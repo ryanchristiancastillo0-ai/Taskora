@@ -1,0 +1,5 @@
+◇ injected env (21) from .env
+[GoogleAuthService] oauth2.googleapis.com answered 400: {
+  "error": "invalid_grant",
+  "error_description": "Malformed auth code."
+}

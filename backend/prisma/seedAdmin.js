@@ -34,7 +34,7 @@
 // someone has since edited.
 
 const { PrismaClient } = require("@prisma/client");
-const PasswordService = require("../src/services/user/passwordService.js");
+const PasswordService = require("../src/services/auth/passwordService.js");
 
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_PASSWORD = "12345678";

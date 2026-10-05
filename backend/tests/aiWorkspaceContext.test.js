@@ -11,9 +11,9 @@ const {
   zoneOffsetMs,
   buildDateTimeContext,
 } = require("../src/utils/dateTime");
-const { APP_HELP } = require("../src/services/user/appHelp.js");
-const AIContextBuilder = require("../src/services/user/aiContextBuilder.js");
-const WorkspaceSnapshotService = require("../src/services/user/workspaceSnapshotService.js");
+const { APP_HELP } = require("../src/services/ai/appHelp.js");
+const AIContextBuilder = require("../src/services/ai/aiContextBuilder.js");
+const WorkspaceSnapshotService = require("../src/services/ai/workspaceSnapshotService.js");
 
 async function run() {
   // --- day boundaries in an explicit zone ---------------------------------

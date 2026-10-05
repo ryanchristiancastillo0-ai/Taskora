@@ -8,7 +8,7 @@
 //   node tests/aiCodeResponseRules.test.js
 const assert = require("assert");
 
-const AIContextBuilder = require("../src/services/user/aiContextBuilder.js");
+const AIContextBuilder = require("../src/services/ai/aiContextBuilder.js");
 
 const HEADER = "How to answer questions about code, tools and building things:";
 

@@ -1,39 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUp, CloudOff, RefreshCw, Sparkles, Trash2, TriangleAlert, X } from 'lucide-react'
-import ConfirmDialog from '@/shared/components/ui/ConfirmDialog'
-import InlineRichText from '@/shared/components/ui/InlineRichText'
-import { cx, timeAgo } from '@/shared/utils/format'
-import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus'
-import useAdminCopilot from '../hooks/useAdminCopilot'
-
-// The chips on an empty thread. Every one of these is answerable from the
-// figures the dashboard already renders, so none of them can be a question the
-// backend has no data for.
-const ADMIN_AI_STARTERS = [
-  'How many users are active?',
-  'How is growth trending?',
-  'What is overdue?',
-  'Who are the most active users?',
-]
+import { ArrowUp, Sparkles, Trash2, X } from 'lucide-react'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { cx } from '@/utils/format'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import useAdminCopilot from '@/features/admin/hooks/useAdminCopilot'
+import CopilotThread, {
+  BADGE_TONES,
+  Spinner,
+  badgeState,
+} from './ai/CopilotThread'
 
 const MAX_INPUT_HEIGHT = 120
-
-// What the header badge claims. Every state is a fact about a request, not a
-// mood: the widget used to say "Online & ready" before anything had been asked,
-// which is a claim it could not support.
-function badgeState({ isThinking, offline, loadError }) {
-  if (offline) return { label: 'Offline', tone: 'offline' }
-  if (loadError) return { label: 'Unavailable', tone: 'error' }
-  if (isThinking) return { label: 'Answering…', tone: 'busy' }
-  return { label: 'Ready', tone: 'ready' }
-}
-
-const BADGE_TONES = {
-  ready: { text: 'text-emerald-600', dot: 'bg-success' },
-  busy: { text: 'text-ink-muted', dot: 'bg-ink-faint' },
-  error: { text: 'text-warning', dot: 'bg-warning' },
-  offline: { text: 'text-warning', dot: 'bg-warning' },
-}
 
 /**
  * Floating admin copilot.
@@ -42,18 +19,14 @@ const BADGE_TONES = {
  * gradient bloom, primary-filled user bubbles, surface-container assistant
  * bubbles, `rounded-field` — so the two read as one product.
  *
- * The difference from the previous version is where the conversation lives. It
- * used to be localStorage plus a `fetch` whose result was thrown away if the
- * widget unmounted, so navigating to another admin page mid-answer lost the reply
- * after the provider had already been paid for it. Now the server stores each
- * question, queues the answer, and pushes it back over the socket; this widget
- * only renders. That is what lets an admin ask a question, go to /admin/users,
- * and find the answer waiting — and it is why the thread survives a reload or a
- * closed tab at all.
+ * The conversation lives on the server, not here: each question is stored, the
+ * answer is queued, and it is pushed back over the socket, so this component only
+ * renders. That is what lets an admin ask a question, go to /admin/users, and
+ * find the answer waiting. Replies are written from a snapshot of the same admin
+ * figures the dashboard renders, so a reply can be checked against the cards
+ * above it.
  *
- * Replies are written from a snapshot of the same admin figures the dashboard
- * renders, so a reply can be checked against the cards above it, and a failure
- * surfaces as a real failure rather than a plausible answer nobody asked for.
+ * The panel's contents — banners, starter chips, exchanges — are in ./ai/CopilotThread.
  */
 export default function AdminAiWidget() {
   const {
@@ -85,21 +58,14 @@ export default function AdminAiWidget() {
   // landing, which is long enough to double-submit a fast double-Enter.
   const sendingRef = useRef(false)
 
-  // No localStorage effect, and that is deliberate. This component used to cache
-  // the whole thread under `taskora:admin-ai-thread`. Now the server owns it, so
-  // the old key is not read and not migrated: a cached thread with no server rows
-  // behind it would show answers the backend cannot vouch for, which is the one
-  // failure mode the rest of this design exists to prevent. The stale key is left
-  // to expire on its own rather than being deleted, so no user data is destroyed.
-
   // The thread runs oldest-first, so "the latest" is the bottom of the scroller
-// and following the conversation means staying pinned there. Keyed on the last
-// row's content rather than on `exchanges.length`: an answer arriving over the
-// socket is an upsert of a row that was already on screen, so the count does not
-// change even though the row grew from a spinner to a full paragraph.
-const lastExchange = exchanges[exchanges.length - 1]
+  // and following the conversation means staying pinned there. Keyed on the last
+  // row's content rather than on `exchanges.length`: an answer arriving over the
+  // socket is an upsert of a row that was already on screen, so the count does not
+  // change even though the row grew from a spinner to a full paragraph.
+  const lastExchange = exchanges[exchanges.length - 1]
 
-useEffect(() => {
+  useEffect(() => {
     const node = scrollRef.current
     if (node) node.scrollTop = node.scrollHeight
   }, [
@@ -170,7 +136,6 @@ useEffect(() => {
     [resizeInput, send]
   )
 
-  const isEmpty = exchanges.length === 0
   const badge = badgeState({ isThinking, offline: !online, loadError })
   const tone = BADGE_TONES[badge.tone]
 
@@ -218,10 +183,9 @@ useEffect(() => {
                 <p className="truncate text-sm font-semibold leading-tight text-ink">
                   Admin Copilot
                 </p>
-                {/* Real state, not a permanent "Online & ready". This badge has
-                    to admit a dropped connection, because the next thing the
-                    admin does will be send a question that cannot reach the
-                    server. */}
+                {/* Real state, not a permanent "Online & ready". This badge has to
+                    admit a dropped connection, because the next thing the admin
+                    does will be send a question that cannot reach the server. */}
                 <p
                   className={cx('flex items-center gap-1.5 text-[11px]', tone.text)}
                   aria-live="polite"
@@ -264,82 +228,22 @@ useEffect(() => {
             </div>
           </div>
 
-          <div
-            ref={scrollRef}
-            aria-live="polite"
-            aria-busy={isThinking}
-            className="relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4"
-          >
-            {/* Offline takes precedence over everything else in the panel. It is
-                the one state where nothing the admin does next can work, so it
-                is stated at the top rather than as a toast that scrolls away. */}
-            {!online && (
-              <p
-                role="alert"
-                className="flex items-start gap-2 rounded-field bg-warning-soft px-3 py-2.5 text-[12px] leading-relaxed text-ink-soft"
-              >
-                <CloudOff className="mt-0.5 size-3.5 flex-shrink-0 text-warning" strokeWidth={2} />
-                <span>
-                  You are offline, so questions cannot be sent. Anything already
-                  asked is still being worked on and will be here when you
-                  reconnect.
-                </span>
-              </p>
-            )}
-
-            {loadError && online && (
-              <p
-                role="alert"
-                className="flex items-start gap-2 rounded-field bg-warning-soft px-3 py-2.5 text-[12px] leading-relaxed text-ink-soft"
-              >
-                <TriangleAlert className="mt-0.5 size-3.5 flex-shrink-0 text-warning" strokeWidth={2} />
-                <span>{loadError}</span>
-              </p>
-            )}
-
-            {loading && isEmpty ? (
-              <div className="flex items-center gap-2 text-[12px] text-ink-faint">
-                <Spinner className="size-3.5" />
-                <span>Loading conversation…</span>
-              </div>
-            ) : isEmpty ? (
-              <div className="space-y-3">
-                <p className="text-[13px] leading-relaxed text-ink-soft">
-                  Ask me about anything on this page — the user base, growth, task
-                  mix or completion.
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {ADMIN_AI_STARTERS.map((starter) => (
-                    <button
-                      key={starter}
-                      type="button"
-                      disabled={!online}
-                      onClick={() => submit(starter)}
-                      className="rounded-full border border-border-subtle bg-surface-container/60 px-2.5 py-1 text-left text-[12px] text-ink-soft transition-colors hover:border-primary-container/40 hover:bg-primary-soft hover:text-primary disabled:opacity-40"
-                    >
-                      {starter}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              exchanges.map((exchange) => (
-                <Exchange
-                  key={exchange.id}
-                  exchange={exchange}
-                  isPending={pending.has(exchange.id)}
-                  onRetry={() => retry(exchange)}
-                  canRetry={online}
-                />
-              ))
-            )}
-          </div>
+          <CopilotThread
+            exchanges={exchanges}
+            pending={pending}
+            loading={loading}
+            loadError={loadError}
+            isThinking={isThinking}
+            online={online}
+            scrollRef={scrollRef}
+            onSubmitStarter={submit}
+            onRetry={retry}
+          />
 
           {/* The composer row. The status line under it is the loading state the
               request asked for: a question that was accepted but has no answer
               yet says so here, in words, next to the box it was typed in —
-              rather than only as an animated dot in the scroll area, which is
-              easy to miss and says nothing about what is happening. */}
+              rather than only as an animated dot in the scroll area. */}
           <div className="relative z-10 shrink-0 border-t border-border-subtle bg-canvas">
             {isThinking && (
               <p
@@ -422,8 +326,8 @@ useEffect(() => {
           <span className="hidden text-sm font-semibold sm:block">Ask Taskora AI</span>
         )}
         {/* A dot rather than a count: the console already shows a badge on every
-            other indicator, and one unanswered question does not need a number
-            on top of the panel's own status line. */}
+            other indicator, and one unanswered question does not need a number on
+            top of the panel's own status line. */}
         {isThinking && !open && (
           <span
             aria-hidden="true"
@@ -447,126 +351,5 @@ useEffect(() => {
         onConfirm={confirmClearThread}
       />
     </div>
-  )
-}
-
-/**
- * One question and the state of its answer.
- *
- * Rendered as two bubbles for an answered exchange and a single compact block
- * for a pending or failed one. The reason: a question with no answer yet has no
- * assistant turn to pair it with, and drawing an empty assistant bubble for it
- * would imply a reply that does not exist.
- */
-function Exchange({ exchange, isPending, onRetry, canRetry }) {
-  const failed = exchange.status === 'FAILED'
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-end justify-end gap-2">
-        <div className="min-w-0 max-w-[85%] text-right">
-          <div className="inline-block rounded-field bg-primary-container px-3 py-2 text-left text-[13px] leading-relaxed text-white">
-            <p className="whitespace-pre-wrap">{exchange.question}</p>
-          </div>
-          <p className="mt-1 px-0.5 text-[10px] text-ink-faint">
-            {timeAgo(exchange.createdAt)}
-          </p>
-        </div>
-      </div>
-
-      {failed ? (
-        <div
-          role="alert"
-          className="flex items-start gap-2 rounded-field bg-warning-soft px-3 py-2.5 text-[12px] leading-relaxed text-ink-soft"
-        >
-          <TriangleAlert className="mt-0.5 size-3.5 flex-shrink-0 text-warning" strokeWidth={2} />
-          <div className="min-w-0 flex-1">
-            <p>{exchange.error || 'That question could not be answered.'}</p>
-            {/* A request limit is not the same failure as a bad question, and
-                treating them the same is what made this feel like a dead end:
-                the answer clears by itself, so the row says when instead of
-                offering a Retry button that would fail again immediately. */}
-            {exchange.quotaExhausted ? (
-              <p className="mt-1 text-[11px] text-ink-muted">
-                {canRetry
-                  ? 'The provider will accept requests again shortly.'
-                  : 'Waiting for the connection to come back.'}
-              </p>
-            ) : (
-              <button
-                type="button"
-                onClick={onRetry}
-                disabled={!canRetry}
-                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline disabled:opacity-40"
-              >
-                <RefreshCw className="size-3" strokeWidth={2.2} />
-                Try again
-              </button>
-            )}
-          </div>
-        </div>
-      ) : isPending ? (
-        <div className="flex items-end gap-2">
-          <span className="flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-            <Sparkles className="size-3" strokeWidth={2.2} />
-          </span>
-          <div
-            role="status"
-            aria-label="Copilot is answering"
-            className="flex items-center gap-2 rounded-field bg-surface-container px-3 py-2.5 text-[12px] text-ink-muted"
-          >
-            <Spinner className="size-3" />
-            <span>Reading the numbers…</span>
-          </div>
-        </div>
-      ) : exchange.answer ? (
-        <div className="flex items-end gap-2">
-          <span className="flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-            <Sparkles className="size-3" strokeWidth={2.2} />
-          </span>
-          <div className="min-w-0 max-w-[85%]">
-            <div className="inline-block rounded-field bg-surface-container px-3 py-2 text-left text-[13px] leading-relaxed text-ink-soft">
-              <InlineRichText text={exchange.answer} />
-            </div>
-            <p className="mt-1 px-0.5 text-[10px] text-ink-faint">
-              {exchange.provider ? `via ${exchange.provider}` : 'answered'}
-              {exchange.answeredAt ? ` · ${timeAgo(exchange.answeredAt)}` : ''}
-            </p>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-/**
- * A single spinner, used in the composer, the status line and each pending row.
- *
- * One component so the three cannot drift apart, and `role="status"` lives on
- * the caller's element because three separate live regions announcing the same
- * thing is worse than one.
- */
-function Spinner({ className }) {
-  return (
-    <svg
-      className={cx('animate-spin', className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="3"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"
-      />
-    </svg>
   )
 }

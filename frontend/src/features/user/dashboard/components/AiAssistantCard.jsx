@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUp, Lightbulb, Loader2, Sparkles, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useApp } from '../../context/AppContext'
-import InlineRichText from '@/shared/components/ui/InlineRichText'
-import { api } from '@/shared/api/client'
-import { normalizeAiMessage } from '@/shared/api/normalize'
-import { cx } from '@/shared/utils/format'
+import { useApp } from '@/app/providers/AppContext'
+import InlineRichText from '@/components/ui/InlineRichText'
+import { api } from '@/services/api/client'
+import { normalizeAiMessage } from '@/services/api/normalize'
+import { cx } from '@/utils/format'
 
 const STORAGE_KEY = 'taskora:dashboard-ai-thread'
 

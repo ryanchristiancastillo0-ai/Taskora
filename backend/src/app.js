@@ -6,6 +6,13 @@ const cookieParser = require("cookie-parser");
 const { uploadDir } = require("./middleware/uploadMiddleware");
 const { errorMiddleware, notFoundMiddleware } = require("./middleware/errorMiddleware");
 const {
+  apiRateLimiter,
+  uploadRateLimiter,
+  passwordResetRateLimiter,
+  authRateLimiter,
+  aiRateLimiter,
+} = require("./middleware/rateLimiter");
+const {
   adminService,
   adminCopilotService,
   supportService,
@@ -51,8 +58,31 @@ app.use(
 // Local file storage
 app.use("/uploads", express.static(uploadDir));
 
+// Rate limiting.
+//
+// Redis-backed, so the counters are shared by every instance of this process:
+// spreading requests over replicas to get a fresh budget each does not work, and
+// nothing is cached in memory between requests. Mounted after cookieParser and
+// cors so a limiter can read the access cookie (counting per account rather than
+// per address) and so a 429 still carries the CORS headers a browser needs to
+// read the response at all.
+//
+// Ahead of the routes, which is the point: a limited request must never reach a
+// controller, Multer or the database. Nothing outside /api is affected — the
+// /uploads static mount above and the Socket.IO handshake are untouched, and the
+// BullMQ workers in server.js are not in this stack to begin with.
+//
+// The reset limiter is mounted before the general auth limiter on purpose, so a
+// password reset call is counted against both tiers: it is a login-shaped
+// attempt as well as a reset-shaped one.
+app.use("/api", apiRateLimiter);
+app.use("/api", uploadRateLimiter);
+app.use("/api/auth", passwordResetRateLimiter);
+app.use("/api/auth", authRateLimiter);
+app.use("/api/ai", aiRateLimiter);
+
 // Routes
-app.use("/api/auth", require("./routes/user/authRoutes.js"));
+app.use("/api/auth", require("./routes/auth/authRoutes.js"));
 // The container already holds one adminCopilotService, and this router takes it
 // rather than building a second. The worker is handed the same instance by
 // server.js, so the HTTP path and the queue path cannot drift.
@@ -67,25 +97,25 @@ app.use(
     supportService,
   })
 );
-app.use("/api/users", require("./routes/user/userRoutes.js"));
-app.use("/api/profile", require("./routes/user/profileRoutes.js"));
-app.use("/api/settings", require("./routes/user/settingsRoutes.js"));
-app.use("/api/notifications", require("./routes/user/notificationRoutes.js"));
-app.use("/api/support", require("./routes/user/supportRoutes.js"));
-app.use("/api/projects", require("./routes/user/projectRoutes.js"));
-app.use("/api/tasks", require("./routes/user/taskRoutes.js"));
-app.use("/api/task-suggestions", require("./routes/user/taskSuggestionRoutes.js"));
-app.use("/api", require("./routes/user/subtaskRoutes.js"));
-app.use("/api/tags", require("./routes/user/tagRoutes.js"));
-app.use("/api/notes", require("./routes/user/noteRoutes.js"));
-app.use("/api/goals", require("./routes/user/goalRoutes.js"));
-app.use("/api/habits", require("./routes/user/habitRoutes.js"));
-app.use("/api/search", require("./routes/user/searchRoutes.js"));
-app.use("/api/community/friends", require("./routes/user/friendshipRoutes.js"));
-app.use("/api/community/conversations", require("./routes/user/conversationRoutes.js"));
-app.use("/api", require("./routes/user/attachmentRoutes.js"));
-app.use("/api/ai", require("./routes/user/aiRoutes.js"));
-app.use("/api/tts", require("./routes/user/ttsRoutes.js"));
+app.use("/api/users", require("./routes/users/userRoutes.js"));
+app.use("/api/profile", require("./routes/users/profileRoutes.js"));
+app.use("/api/settings", require("./routes/users/settingsRoutes.js"));
+app.use("/api/notifications", require("./routes/notifications/notificationRoutes.js"));
+app.use("/api/support", require("./routes/support/supportRoutes.js"));
+app.use("/api/projects", require("./routes/projects/projectRoutes.js"));
+app.use("/api/tasks", require("./routes/tasks/taskRoutes.js"));
+app.use("/api/task-suggestions", require("./routes/tasks/taskSuggestionRoutes.js"));
+app.use("/api", require("./routes/tasks/subtaskRoutes.js"));
+app.use("/api/tags", require("./routes/tasks/tagRoutes.js"));
+app.use("/api/notes", require("./routes/notes/noteRoutes.js"));
+app.use("/api/goals", require("./routes/goals/goalRoutes.js"));
+app.use("/api/habits", require("./routes/habits/habitRoutes.js"));
+app.use("/api/search", require("./routes/search/searchRoutes.js"));
+app.use("/api/community/friends", require("./routes/community/friendshipRoutes.js"));
+app.use("/api/community/conversations", require("./routes/community/conversationRoutes.js"));
+app.use("/api", require("./routes/attachments/attachmentRoutes.js"));
+app.use("/api/ai", require("./routes/ai/aiRoutes.js"));
+app.use("/api/tts", require("./routes/ai/ttsRoutes.js"));
 
 // Health check
 app.get("/api/health", (req, res) => {

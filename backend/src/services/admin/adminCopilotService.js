@@ -1,7 +1,7 @@
 const { parseSchema } = require("../../utils/validate.js");
 const AppError = require("../../utils/AppError.js");
 const { deriveStatus } = require("./adminService.js");
-const { isQuotaError } = require("../user/ai/aiProvider.js");
+const { isQuotaError } = require("../ai/aiProvider.js");
 const { adminAskSchema } = require("../../validators/admin/adminValidators.js");
 const {
   adminCopilotQueue,

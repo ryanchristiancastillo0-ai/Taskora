@@ -12,11 +12,11 @@ const mockAppContext = {
   enforce: 'pre',
   resolveId(source) {
     // `ThemeProvider` sits in the same folder and imports `./AppContext`, which
-    // carries no `context/` prefix for the pattern below to match. Left
+    // carries no `providers/` prefix for the pattern below to match. Left
     // unaliased it pulls in the real store, and its `useApp` throws because the
     // real AppProvider is not in the probe tree.
     if (source === './AppContext') return mock
-    if (/context[\\/]AppContext(\.jsx)?$/.test(source)) return mock
+    if (/providers[\\/]AppContext(\.jsx)?$/.test(source)) return mock
   },
 }
 

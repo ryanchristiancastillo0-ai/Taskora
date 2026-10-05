@@ -1,22 +1,22 @@
 import { FolderKanban, MoreVertical, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import PageHeader from '@/shared/components/layouts/PageHeader'
-import { projectProgress } from '../../dashboard/components/ProjectsProgressCard'
-import Badge from '@/shared/components/ui/Badge'
-import Button from '@/shared/components/ui/Button'
-import Dropdown, { MenuItem } from '@/shared/components/ui/Dropdown'
-import EmptyState from '@/shared/components/ui/EmptyState'
-import ConfirmDialog from '@/shared/components/ui/ConfirmDialog'
-import EmptyStateModal from '@/shared/components/ui/EmptyStateModal'
-import Input from '@/shared/components/ui/Input'
-import Modal from '@/shared/components/ui/Modal'
-import ProgressBar from '@/shared/components/ui/ProgressBar'
-import Select from '@/shared/components/ui/Select'
-import Textarea from '@/shared/components/ui/Textarea'
-import { useApp } from '../../context/AppContext'
-import { PROJECT_COLORS } from '@/shared/constants/index'
-import { cx } from '@/shared/utils/format'
+import PageHeader from '@/components/layout/PageHeader'
+import { projectProgress } from '@/features/user/dashboard/components/ProjectsProgressCard'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Dropdown, { MenuItem } from '@/components/ui/Dropdown'
+import EmptyState from '@/components/ui/EmptyState'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import EmptyStateModal from '@/components/ui/EmptyStateModal'
+import Input from '@/components/ui/Input'
+import Modal from '@/components/ui/Modal'
+import ProgressBar from '@/components/ui/ProgressBar'
+import Select from '@/components/ui/Select'
+import Textarea from '@/components/ui/Textarea'
+import { useApp } from '@/app/providers/AppContext'
+import { PROJECT_COLORS } from '@/constants/index'
+import { cx } from '@/utils/format'
 
 const PROJECT_STATUSES = ['ACTIVE', 'COMPLETED', 'ARCHIVED']
 
@@ -306,7 +306,7 @@ export default function Projects() {
             <span className="mb-2 block text-[13px] font-medium text-ink">Color</span>
             {renderColorPicker(values.color, (color) => setValues({ ...values, color }))}
           </div>
-          <div className="mt-1 flex justify-end gap-3">
+          <div className="mt-1 flex flex-wrap justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setShowNew(false)}>
               Cancel
             </Button>
@@ -339,7 +339,7 @@ export default function Projects() {
             onChange={(event) => setRenameName(event.target.value)}
             autoFocus
           />
-          <div className="mt-1 flex justify-end gap-3">
+          <div className="mt-1 flex flex-wrap justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setRenameTarget(null)}>
               Cancel
             </Button>
@@ -394,7 +394,7 @@ export default function Projects() {
             <span className="mb-2 block text-[13px] font-medium text-ink">Color</span>
             {renderColorPicker(edit.color, (color) => setEdit({ ...edit, color }))}
           </div>
-          <div className="mt-1 flex justify-end gap-3">
+          <div className="mt-1 flex flex-wrap justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setEditTarget(null)}>
               Cancel
             </Button>

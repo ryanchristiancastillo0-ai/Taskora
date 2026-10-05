@@ -1,11 +1,11 @@
 import { LogOut, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { NAV_SECTIONS } from '@/shared/constants/index'
-import Avatar from '@/shared/components/ui/Avatar'
-import ConfirmDialog from '@/shared/components/ui/ConfirmDialog'
-import { SidebarNavSections } from '@/shared/components/layouts/SidebarNavItem'
-import { useApp } from '../context/AppContext'
+import { NAV_SECTIONS } from '@/constants/index'
+import Avatar from '@/components/ui/Avatar'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { SidebarNavSections } from '@/components/layout/SidebarNavItem'
+import { useApp } from '@/app/providers/AppContext'
 import SidebarChatHeads from './SidebarChatHeads'
 
 function ProjectLink({ project }) {

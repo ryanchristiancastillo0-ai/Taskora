@@ -1,4 +1,4 @@
-const { assertConversationMember } = require("../services/user/community/communityAccess.js");
+const { assertConversationMember } = require("../services/community/communityAccess.js");
 
 // Socket-level chat events (typing, read). Message delivery itself happens
 // via REST + realtimeService emits, so clients get one canonical flow.

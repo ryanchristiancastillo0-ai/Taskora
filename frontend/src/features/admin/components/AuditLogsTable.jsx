@@ -1,10 +1,10 @@
 import { Eye, MoreHorizontal, ShieldAlert } from 'lucide-react'
-import Avatar from '@/shared/components/ui/Avatar'
-import Badge from '@/shared/components/ui/Badge'
-import DataTable from '@/shared/components/ui/DataTable'
-import Dropdown, { MenuItem } from '@/shared/components/ui/Dropdown'
-import { auditActionMeta } from '@/shared/constants'
-import { formatDate, timeAgo } from '@/shared/utils/format'
+import Avatar from '@/components/ui/Avatar'
+import Badge from '@/components/ui/Badge'
+import DataTable from '@/components/ui/DataTable'
+import Dropdown, { MenuItem } from '@/components/ui/Dropdown'
+import { auditActionMeta } from '@/constants'
+import { formatDate, timeAgo } from '@/utils/format'
 
 // How many key/value pairs the Details cell will show before deferring to the
 // detail modal. Enough for the flat objects the call sites actually write (a

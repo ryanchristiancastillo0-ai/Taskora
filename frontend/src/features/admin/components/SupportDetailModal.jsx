@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Inbox, Save } from 'lucide-react'
-import Avatar from '@/shared/components/ui/Avatar'
-import Badge from '@/shared/components/ui/Badge'
-import Button from '@/shared/components/ui/Button'
-import Modal from '@/shared/components/ui/Modal'
-import Select from '@/shared/components/ui/Select'
-import Textarea from '@/shared/components/ui/Textarea'
-import { ACCOUNT_STATUS } from '@/shared/constants'
-import { formatDate, formatTime, timeAgo } from '@/shared/utils/format'
+import Avatar from '@/components/ui/Avatar'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
+import Select from '@/components/ui/Select'
+import Textarea from '@/components/ui/Textarea'
+import { ACCOUNT_STATUS } from '@/constants'
+import { formatDate, formatTime, timeAgo } from '@/utils/format'
 import {
   issueLabel,
   problemLabel,
@@ -174,7 +174,7 @@ export default function SupportDetailModal({ request, onClose, onSave, saving })
           )}
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-border-subtle pt-4">
+        <div className="flex flex-wrap justify-end gap-3 border-t border-border-subtle pt-4">
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Close
           </Button>

@@ -1,7 +1,7 @@
 // Chat notification copy + deep-link tests for MessageService.
 // Run with: node tests/notificationCopy.test.js
 const assert = require("assert");
-const MessageService = require("../src/services/user/messageService.js");
+const MessageService = require("../src/services/community/messageService.js");
 
 const image = (fileName = "pic.png", fileType = "image/png") => ({
   kind: "IMAGE",

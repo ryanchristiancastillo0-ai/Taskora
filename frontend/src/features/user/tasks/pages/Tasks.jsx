@@ -1,14 +1,14 @@
 import { ListChecks } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import PageHeader from '@/shared/components/layouts/PageHeader'
-import TaskFilters from '../components/TaskFilters'
-import TaskFormModal from '../components/TaskFormModal'
-import TaskList from '../components/TaskList'
-import Button from '@/shared/components/ui/Button'
-import EmptyStateModal from '@/shared/components/ui/EmptyStateModal'
-import { useApp } from '../../context/AppContext'
-import { sortTasks } from '@/shared/utils/format'
+import PageHeader from '@/components/layout/PageHeader'
+import TaskFilters from '@/features/user/tasks/components/TaskFilters'
+import TaskFormModal from '@/features/user/tasks/components/TaskFormModal'
+import TaskList from '@/features/user/tasks/components/TaskList'
+import Button from '@/components/ui/Button'
+import EmptyStateModal from '@/components/ui/EmptyStateModal'
+import { useApp } from '@/app/providers/AppContext'
+import { sortTasks } from '@/utils/format'
 
 export default function Tasks() {
   const { data } = useApp()

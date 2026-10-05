@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, useLocation } from 'react-router-dom'
-import './index.css'
+import './styles/globals.css'
 import { AppProvider } from './__mockApp'
-import AdminHeader from '@/shared/components/layouts/admin/AdminHeader'
+import AdminHeader from '@/components/layout/admin/AdminHeader'
 import StatCard from '@/features/admin/components/StatCard'
 import { Users, UserCheck, Activity, MessageSquare } from 'lucide-react'
 

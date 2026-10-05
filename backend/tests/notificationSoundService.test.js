@@ -2,8 +2,8 @@
 // so nothing here touches a real database.
 const assert = require("assert");
 
-const NotificationSoundService = require("../src/services/user/notificationSoundService.js");
-const SettingsService = require("../src/services/user/settingsService.js");
+const NotificationSoundService = require("../src/services/notifications/notificationSoundService.js");
+const SettingsService = require("../src/services/users/settingsService.js");
 
 const SOUNDS = [
   { id: "s1", name: "Current Notification Sound", path: "/uploads/notifications/current.wav", isDefault: true, createdAt: new Date(1) },

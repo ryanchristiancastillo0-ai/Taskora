@@ -8,12 +8,12 @@ import {
   Sparkles,
   UserPlus,
 } from 'lucide-react'
-import PageHeader from '@/shared/components/layouts/PageHeader'
-import Button from '@/shared/components/ui/Button'
-import Badge from '@/shared/components/ui/Badge'
-import PriorityDot from '@/shared/components/ui/PriorityDot'
-import { useApp } from '../../context/AppContext'
-import { cx, notificationPriority, timeAgo } from '@/shared/utils/format'
+import PageHeader from '@/components/layout/PageHeader'
+import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
+import PriorityDot from '@/components/ui/PriorityDot'
+import { useApp } from '@/app/providers/AppContext'
+import { cx, notificationPriority, timeAgo } from '@/utils/format'
 
 const typeIcon = {
   TASK_DUE: { icon: CalendarClock, className: 'bg-warning-soft text-warning' },

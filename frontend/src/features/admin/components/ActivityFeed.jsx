@@ -1,6 +1,6 @@
-import Avatar from '@/shared/components/ui/Avatar'
+import Avatar from '@/components/ui/Avatar'
 import SectionState from './SectionState'
-import { timeAgo } from '@/shared/utils/format'
+import { timeAgo } from '@/utils/format'
 import { Activity } from 'lucide-react'
 
 const TONE_DOTS = {

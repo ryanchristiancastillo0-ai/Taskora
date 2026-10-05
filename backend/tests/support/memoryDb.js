@@ -41,7 +41,11 @@ const crypto = require("crypto");
 // row created through the API looks to the service exactly like a row the
 // database would have produced.
 const MODEL_DEFAULTS = {
-  user: { role: "USER", status: "ACTIVE" },
+  // googleId: null mirrors the schema's nullable Google link. Without it, a user
+  // row created by a test would simply lack the key, and GoogleAuthService's
+  // "already linked?" lookup would compare against `undefined` instead of the
+  // NULL a real database returns.
+  user: { role: "USER", status: "ACTIVE", googleId: null },
   personalizationProfile: {
     aiProvider: "GEMINI",
     onboardingCompleted: false,

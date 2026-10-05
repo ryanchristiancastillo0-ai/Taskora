@@ -6,12 +6,12 @@ import {
   Unlock,
   Lock,
 } from 'lucide-react'
-import Avatar from '@/shared/components/ui/Avatar'
-import Badge from '@/shared/components/ui/Badge'
-import DataTable from '@/shared/components/ui/DataTable'
-import Dropdown, { MenuItem, MenuSeparator } from '@/shared/components/ui/Dropdown'
-import { ACCOUNT_STATUS, ACTIVITY_STATUS, userRoleMeta } from '@/shared/constants'
-import { formatDate, timeAgo } from '@/shared/utils/format'
+import Avatar from '@/components/ui/Avatar'
+import Badge from '@/components/ui/Badge'
+import DataTable from '@/components/ui/DataTable'
+import Dropdown, { MenuItem, MenuSeparator } from '@/components/ui/Dropdown'
+import { ACCOUNT_STATUS, ACTIVITY_STATUS, userRoleMeta } from '@/constants'
+import { formatDate, timeAgo } from '@/utils/format'
 
 // Presentational only. Every filter, sort and mutation lives in pages/Users.jsx,
 // so this component can be reused by the detail view and would survive being

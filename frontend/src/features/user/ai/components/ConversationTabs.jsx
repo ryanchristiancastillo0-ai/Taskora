@@ -1,6 +1,6 @@
 import { MoreVertical, Pencil, Trash2 } from 'lucide-react'
-import Dropdown, { MenuItem } from '@/shared/components/ui/Dropdown'
-import { cx } from '@/shared/utils/format'
+import Dropdown, { MenuItem } from '@/components/ui/Dropdown'
+import { cx } from '@/utils/format'
 
 export default function ConversationTabs({ conversations, activeId, onOpenThread, onRename, onDelete }) {
   return (

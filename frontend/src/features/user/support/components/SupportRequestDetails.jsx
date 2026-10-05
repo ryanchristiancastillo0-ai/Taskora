@@ -1,15 +1,15 @@
 import { AlertTriangle, Inbox } from 'lucide-react'
-import Badge from '@/shared/components/ui/Badge'
-import Button from '@/shared/components/ui/Button'
-import Modal from '@/shared/components/ui/Modal'
-import Spinner from '@/shared/components/ui/Spinner'
-import { formatDate, formatTime } from '@/shared/utils/format'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
+import Spinner from '@/components/ui/Spinner'
+import { formatDate, formatTime } from '@/utils/format'
 import {
   issueLabel,
   problemLabel,
   supportCategoryLabel,
   supportStatusMeta,
-} from '../supportContent'
+} from '@/features/user/support/supportContent'
 
 /**
  * One ticket, in full.

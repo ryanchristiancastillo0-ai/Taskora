@@ -1,7 +1,7 @@
 import { ArrowDown, Sparkles, Volume2 } from 'lucide-react'
-import Avatar from '@/shared/components/ui/Avatar'
-import InlineRichText from '@/shared/components/ui/InlineRichText'
-import { cx, displayName, formatTime, timeAgo } from '@/shared/utils/format'
+import Avatar from '@/components/ui/Avatar'
+import InlineRichText from '@/components/ui/InlineRichText'
+import { cx, displayName, formatTime, timeAgo } from '@/utils/format'
 import FileChip from './FileChip'
 
 function ThinkingBubble() {

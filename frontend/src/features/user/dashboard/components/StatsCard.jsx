@@ -1,5 +1,5 @@
-import ProgressBar from '@/shared/components/ui/ProgressBar'
-import { cx } from '@/shared/utils/format'
+import ProgressBar from '@/components/ui/ProgressBar'
+import { cx } from '@/utils/format'
 
 const toneIcons = {
   indigo: 'bg-primary-soft text-primary',

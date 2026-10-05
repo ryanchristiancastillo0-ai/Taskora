@@ -3,8 +3,8 @@
 // Run with: node tests/taskSuggestionService.test.js
 const assert = require("assert");
 const AppError = require("../src/utils/AppError");
-const TaskPatternService = require("../src/services/user/taskPatternService.js");
-const TaskSuggestionService = require("../src/services/user/taskSuggestionService.js");
+const TaskPatternService = require("../src/services/tasks/taskPatternService.js");
+const TaskSuggestionService = require("../src/services/tasks/taskSuggestionService.js");
 
 function buildMock() {
   const state = {

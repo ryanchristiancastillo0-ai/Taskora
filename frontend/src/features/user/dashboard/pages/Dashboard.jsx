@@ -6,14 +6,14 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import AiAssistantCard from '../components/AiAssistantCard'
-import ProjectsProgressCard from '../components/ProjectsProgressCard'
-import StatsCard from '../components/StatsCard'
-import TodayTasksCard from '../components/TodayTasksCard'
-import UpcomingScheduleCard from '../components/UpcomingScheduleCard'
-import TaskFormModal from '../../tasks/components/TaskFormModal'
-import { useApp } from '../../context/AppContext'
-import { greeting, displayName } from '@/shared/utils/format'
+import AiAssistantCard from '@/features/user/dashboard/components/AiAssistantCard'
+import ProjectsProgressCard from '@/features/user/dashboard/components/ProjectsProgressCard'
+import StatsCard from '@/features/user/dashboard/components/StatsCard'
+import TodayTasksCard from '@/features/user/dashboard/components/TodayTasksCard'
+import UpcomingScheduleCard from '@/features/user/dashboard/components/UpcomingScheduleCard'
+import TaskFormModal from '@/features/user/tasks/components/TaskFormModal'
+import { useApp } from '@/app/providers/AppContext'
+import { greeting, displayName } from '@/utils/format'
 
 export default function Dashboard() {
   const { data } = useApp()

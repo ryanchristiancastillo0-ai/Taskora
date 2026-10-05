@@ -1,6 +1,6 @@
-import PageHeader from '@/shared/components/layouts/PageHeader'
-import CalendarGrid from '../components/CalendarGrid'
-import { useApp } from '../../context/AppContext'
+import PageHeader from '@/components/layout/PageHeader'
+import CalendarGrid from '@/features/user/calendar/components/CalendarGrid'
+import { useApp } from '@/app/providers/AppContext'
 
 export default function CalendarPage() {
   const { data } = useApp()

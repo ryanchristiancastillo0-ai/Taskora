@@ -27,7 +27,7 @@
 // in firstName for the same reason User.firstName cannot be left null.
 
 const { PrismaClient } = require("@prisma/client");
-const PasswordService = require("../src/services/user/passwordService.js");
+const PasswordService = require("../src/services/auth/passwordService.js");
 const { seedAdmin, ADMIN_EMAIL, ADMIN_PASSWORD } = require("./seedAdmin.js");
 
 const DUMMY_PASSWORD = "12345678";

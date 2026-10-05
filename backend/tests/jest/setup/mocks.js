@@ -86,4 +86,4 @@ jest.mock("../../../src/queues/patternSuggestionQueue.js", () => {
 
 // Brevo. Replaces the class, so EmailService's constructor signature and every
 // method the services call stay identical.
-jest.mock("../../../src/services/user/emailService.js", () => require("../../support/emailServiceStub"));
+jest.mock("../../../src/services/platform/emailService.js", () => require("../../support/emailServiceStub"));

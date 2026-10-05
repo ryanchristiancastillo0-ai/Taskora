@@ -1,0 +1,369 @@
+﻿@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* App surfaces */
+  --color-canvas: #f6f7fb;
+  --color-surface-card: #ffffff;
+  --color-surface-soft: #f3f4f9;
+  --color-surface-container: #eef1f7;
+  --color-surface-high: #e2e8f0;
+  --color-border-subtle: #eceef2;
+  --color-outline: #c8c4d6;
+
+  /* Text */
+  --color-ink: #161d1f;
+  --color-ink-soft: #474554;
+  --color-ink-muted: #717b8a;
+  --color-ink-faint: #9aa3af;
+
+  /* Brand (indigo-inspired) */
+  --color-primary: #4d3ec8;
+  --color-primary-strong: #3e2bb9;
+  --color-primary-container: #6659e2;
+  --color-primary-soft: #eeedfc;
+  --color-primary-faint: #e4dfff;
+
+  /* Semantic tones */
+  --color-success: #10b981;
+  --color-success-soft: #d9f5ec;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef0d8;
+  --color-danger: #ef4444;
+  --color-danger-soft: #fde3e3;
+  --color-error: #ba1a1a;
+
+  /* Auth (deliberately monochrome, independent of the indigo app palette) */
+  --color-auth-canvas: #f0f0f2;
+  --color-auth-card: #ffffff;
+  --color-auth-field: #ffffff;
+  --color-auth-hover: #f5f5f6;
+  --color-auth-line: #e5e5e9;
+  --color-auth-ink: #0a0a0b;
+  --color-auth-ink-soft: #26262a;
+  --color-auth-ink-body: #3f3f47;
+  --color-auth-ink-muted: #6b6b76;
+  --color-auth-ink-faint: #a1a1aa;
+  --color-auth-btn: #141416;
+  --color-auth-btn-hover: #26262a;
+  --color-auth-on-btn: #ffffff;
+  --color-auth-danger-soft: #fde3e3;
+  --color-auth-danger: #ba1a1a;
+  --color-auth-showcase: #070708;
+  --color-auth-showcase-card: #232427;
+
+  /* Shadows */
+  --shadow-card: 0 1px 8px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 16px rgba(77, 62, 200, 0.1);
+  --shadow-lifted: 0 8px 24px rgba(77, 62, 200, 0.12);
+  --shadow-primary-glow: 0 4px 14px rgba(102, 89, 226, 0.28);
+
+  /* Radius */
+  --radius-card: 0.75rem; /* 12px */
+  --radius-field: 0.5rem; /* 8px */
+}
+
+/* Reserve scroll room for the fixed mobile bottom navigation.
+   Below `lg` the bar covers the bottom of the viewport, so page content needs
+   extra padding or the last card/form/button sits trapped underneath it.
+   The 5.75rem is the bar's own geometry: h-16 (4rem) + 0.75rem bottom inset
+   + 1rem of breathing room, then the safe-area term keeps the gap clear of the
+   iOS home indicator. Declared unlayered so it reliably wins over the `pb-14`
+   utility at the same breakpoint. Desktop is untouched because the bar is
+   hidden at `lg` and up. Keep in step with MobileBottomNav. */
+@media (max-width: 1023.98px) {
+  .pb-safe-for-bottom-nav {
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Floating panel entrance (admin AI widget).
+   Reuses the `fadeIn` keyframe above but anchors the scale to the bottom right,
+   so the panel appears to grow out of the launcher button it belongs to rather
+   than out of the viewport centre. Declared unlayered for the same reason as
+   `.pb-safe-for-bottom-nav`: it has to beat Tailwind's `animate-*` utilities. */
+.animate-panel-in {
+  transform-origin: bottom right;
+  animation: fadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The launcher sits above the fixed mobile bottom navigation, so it carries the
+   same safe-area term the bar does. Above `lg` the bar is hidden and this
+   collapses to the plain desktop inset. */
+.assistant-launcher-inset {
+  bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1024px) {
+  .assistant-launcher-inset {
+    bottom: 1.5rem;
+  }
+}
+
+/* Clearance for the modal's bottom edge on a phone.
+
+   Below `sm` the shared Modal is a bottom sheet (see Modal.jsx), so its last
+   row of controls sits flush against the bottom of the screen. On a device with
+   a home indicator that row lands under the indicator and the primary button
+   becomes hard to hit. This carries the same `env(safe-area-inset-bottom, 0px)`
+   term BottomNavBar and `.pb-safe-for-bottom-nav` already use.
+
+   The sheet is anchored `items-end` below `sm` and centred at `sm` and up, where
+   there is nothing to inset from - so the term collapses to nothing rather than
+   pushing a centred dialog off-axis. Declared unlayered for the same reason as
+   `.pb-safe-for-bottom-nav`: it has to win over the panel's own padding.
+   Keep in step with Modal.jsx. */
+@media (max-width: 639.98px) {
+  .pb-safe-sheet {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Clearance for the floating copilot launcher, which sits in the page's own
+   bottom-right corner rather than in flow.
+
+   The admin tables end with a pagination row, so this is not decorative: the
+   Previous/Next buttons used to land underneath the launcher button and become
+   unclickable whenever the page was scrolled to the bottom. The main column
+   only reserved the bottom navigation's height, which is shorter than the
+   launcher column the widget actually occupies.
+
+   Measured from the bottom of the viewport, matching `.assistant-launcher-inset`
+   and the launcher's own `size-11`. Below `lg` the launcher is stacked on top of
+   the bottom bar, so the two clearances add: 5.75rem for the bar plus 2.75rem for
+   the button. Above `lg` the bar is gone and only 1.5rem + 3rem remain. One
+   value per breakpoint, so the page can always scroll its last row clear.
+   Keep in step with `.assistant-launcher-inset`, `.pb-safe-for-bottom-nav`,
+   `.assistant-panel-max-h` and the launcher button in AdminAiWidget. */
+@media (max-width: 1023.98px) {
+  .pb-safe-for-assistant {
+    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 1024px) {
+  .pb-safe-for-assistant {
+    padding-bottom: 4.5rem;
+  }
+}
+
+/* The height the floating copilot panel is allowed to take.
+   The panel and the launcher button share one fixed column, so the room below
+   the panel is spent before the panel gets any: 5.75rem for the bottom
+   navigation (the same geometry as `.pb-safe-for-bottom-nav`), 0.75rem for the
+   gap under the panel, and 2.75rem for the launcher button — 9.25rem in total,
+   plus the safe-area term the inset above already carries.
+   The rest of the budget goes to the fixed page header. The panel sits at
+   `z-30`, the same layer as AdminHeader, so a panel tall enough to reach the top
+   of a short viewport slides underneath it and takes its own title and close
+   button with it: on a 667px phone the old arithmetic left the panel's top edge
+   at y=0 while the header is still occupying the first 4rem. Reserving the
+   header's `h-16` plus 1rem of air keeps the panel's top edge below it at every
+   phone height, short and landscape ones included.
+   `dvh` rather than `vh` on purpose: a mobile browser measures `vh` with the URL
+   bar hidden, so a `vh` budget quietly overruns the visible area by however
+   tall that bar happens to be. NotificationBell and AdminSearch already budget
+   this way.
+   Above `lg` the bar is hidden and the column only clears the desktop inset, so
+   the budget shrinks to match. The 34rem cap is the panel's own designed
+   proportions. Keep this in step with `.assistant-launcher-inset` and
+   BottomNavBar when the bar's height, the gap or the button changes. */
+.assistant-panel-max-h {
+  max-height: min(34rem, calc(100dvh - 14.25rem - env(safe-area-inset-bottom, 0px)));
+}
+
+@media (min-width: 1024px) {
+  .assistant-panel-max-h {
+    max-height: min(34rem, calc(100dvh - 5.25rem));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-panel-in {
+    animation: none;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@layer base {
+/* Theme + density overrides -------------------------------------------------
+   data-theme and data-compact are applied to <html> by ThemeProvider.
+   These override the :root @theme tokens in place so every Tailwind utility
+   that references them (bg-surface-card, text-ink, border-border-subtle,
+   rounded-field, shadow-*) re-skins instantly. SYSTEM resolves to the
+   effective value in JS before the attribute is set.
+   ------------------------------------------------------------------------ */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --color-canvas: #0f1117;
+  --color-surface-card: #181b23;
+  --color-surface-soft: #1e212a;
+  --color-surface-container: #262a36;
+  --color-surface-high: #2f3442;
+  --color-border-subtle: #262b37;
+  --color-outline: #3a4054;
+
+  /* Text */
+  --color-ink: #eceef4;
+  --color-ink-soft: #cdd2de;
+  --color-ink-muted: #9aa2b2;
+  --color-ink-faint: #6f7888;
+
+  /* Brand (indigo, lightened for dark surfaces) */
+  --color-primary: #9d90ff;
+  --color-primary-strong: #b4aaff;
+  --color-primary-container: #8a7bee;
+  --color-primary-soft: #2f2847;
+  --color-primary-faint: #262141;
+
+  /* Semantic tones */
+  --color-success: #2fd4a2;
+  --color-success-soft: #112e26;
+  --color-warning: #f5b04f;
+  --color-warning-soft: #35280f;
+  --color-danger: #f2676b;
+  --color-danger-soft: #3a1b1e;
+  --color-error: #f87171;
+
+  /* Auth — kept monochrome so the auth pages stay neutral in both themes */
+  --color-auth-canvas: #0a0a0c;
+  --color-auth-card: #141417;
+  --color-auth-field: #191a1e;
+  --color-auth-hover: #232429;
+  --color-auth-line: #2b2c32;
+  --color-auth-ink: #f6f6f8;
+  --color-auth-ink-soft: #e3e3e7;
+  --color-auth-ink-body: #cfcfd6;
+  --color-auth-ink-muted: #9797a1;
+  --color-auth-ink-faint: #6c6c76;
+  --color-auth-btn: #f4f4f6;
+  --color-auth-btn-hover: #ffffff;
+  --color-auth-on-btn: #0a0a0c;
+  --color-auth-danger-soft: #3a1b1e;
+  --color-auth-danger: #fca5a5;
+  --color-auth-showcase: #0e0e11;
+  --color-auth-showcase-card: #1b1c20;
+}
+
+html[data-compact="true"] {
+  /* Tighter field/row sizing for compact mode */
+  --radius-field: 0.375rem;
+  --radius-card: 0.625rem;
+}
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+   * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-high) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--color-surface-high);
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-primary-container);
+    background-clip: padding-box;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  /* Theme the native select popup where browsers allow (Chrome/Edge/Firefox);
+     Safari renders its own system popup and ignores this. */
+  select option {
+    background-color: var(--color-surface-card);
+    color: var(--color-ink);
+  }
+}
+
+/* Auth showcase ray-of-light effects */
+.light-streak {
+  position: absolute;
+  width: 150%;
+  height: 1.5px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(200, 215, 255, 0.12) 30%,
+    rgba(255, 255, 255, 0.7) 65%,
+    rgba(120, 160, 255, 0.2) 80%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(-36deg);
+  box-shadow: 0 0 14px rgba(180, 205, 255, 0.45);
+  pointer-events: none;
+}
+
+.light-streak-secondary {
+  position: absolute;
+  width: 120%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(147, 197, 253, 0.25) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(-36deg);
+  pointer-events: none;
+}
+
+.notched-corner {
+  position: relative;
+}
+
+.notched-corner::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--notch-w, 100px);
+  height: var(--notch-h, 60px);
+  background: var(--notch-bg, var(--color-auth-showcase));
+  border-bottom-left-radius: var(--notch-r, 20px);
+  pointer-events: none;
+  z-index: 5;
+}

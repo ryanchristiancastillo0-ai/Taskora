@@ -1,11 +1,11 @@
 import { Check } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import AuthShell from '../../auth/components/AuthShell'
-import Button from '@/shared/components/ui/Button'
-import Input from '@/shared/components/ui/Input'
-import Select from '@/shared/components/ui/Select'
-import { cx } from '@/shared/utils/format'
+import AuthShell from '@/features/auth/components/AuthShell'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Select from '@/components/ui/Select'
+import { cx } from '@/utils/format'
 import {
   AI_PROVIDER_OPTIONS,
   AI_RESPONSE_STYLES,
@@ -13,8 +13,8 @@ import {
   REMINDER_PREFERENCES,
   TIME_OF_DAY,
   WORK_STYLES,
-} from '@/shared/constants/index'
-import { useApp } from '../../context/AppContext'
+} from '@/constants/index'
+import { useApp } from '@/app/providers/AppContext'
 
 export default function Onboarding() {
   const navigate = useNavigate()

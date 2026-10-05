@@ -1,10 +1,10 @@
 import { LogOut, Sparkles } from 'lucide-react'
 import { useState } from 'react'
-import { ADMIN_NAV_SECTIONS } from '@/shared/constants'
-import Avatar from '@/shared/components/ui/Avatar'
-import ConfirmDialog from '@/shared/components/ui/ConfirmDialog'
-import { SidebarNavSections } from '@/shared/components/layouts/SidebarNavItem'
-import { useApp } from '../../user/context/AppContext'
+import { ADMIN_NAV_SECTIONS } from '@/constants'
+import Avatar from '@/components/ui/Avatar'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { SidebarNavSections } from '@/components/layout/SidebarNavItem'
+import { useApp } from '@/app/providers/AppContext'
 
 /**
  * The admin console's navigation.

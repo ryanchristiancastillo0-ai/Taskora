@@ -1,6 +1,6 @@
 const { Queue, Worker, UnrecoverableError } = require("bullmq");
 const { redis } = require("../config/redis");
-const { isQuotaError } = require("../services/user/ai/aiProvider.js");
+const { isQuotaError } = require("../services/ai/aiProvider.js");
 
 const AI_GENERATION_QUEUE = "ai-generation";
 const AI_GENERATION_JOB = "ai-generate";

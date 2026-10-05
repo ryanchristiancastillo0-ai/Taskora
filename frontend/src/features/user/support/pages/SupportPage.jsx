@@ -1,30 +1,30 @@
 import { useState } from 'react'
 import { CheckCircle2, Inbox, LifeBuoy } from 'lucide-react'
-import PageHeader from '@/shared/components/layouts/PageHeader'
-import Badge from '@/shared/components/ui/Badge'
-import Button from '@/shared/components/ui/Button'
-import Card from '@/shared/components/ui/Card'
-import { useApp } from '../../context/AppContext'
-import useSupportRequests from '../hooks/useSupportRequests'
+import PageHeader from '@/components/layout/PageHeader'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import { useApp } from '@/app/providers/AppContext'
+import useSupportRequests from '@/features/user/support/hooks/useSupportRequests'
 import {
   createRequest,
   getMyRequests,
   getRequest,
   submitFeedback,
-} from '../api/supportApi'
+} from '@/features/user/support/api/supportApi'
 import {
   issueLabel,
   problemLabel,
   supportCategoryLabel,
   supportStatusMeta,
-} from '../supportContent'
-import SupportCategoryGrid, { ContactSupportCard } from '../components/SupportCategoryGrid'
-import SupportIssueFlow from '../components/SupportIssueFlow'
-import SupportRating from '../components/SupportRating'
-import SupportRequestDetails from '../components/SupportRequestDetails'
-import SupportRequestForm from '../components/SupportRequestForm'
-import SupportRequestList from '../components/SupportRequestList'
-import SupportSearch from '../components/SupportSearch'
+} from '@/features/user/support/supportContent'
+import SupportCategoryGrid, { ContactSupportCard } from '@/features/user/support/components/SupportCategoryGrid'
+import SupportIssueFlow from '@/features/user/support/components/SupportIssueFlow'
+import SupportRating from '@/features/user/support/components/SupportRating'
+import SupportRequestDetails from '@/features/user/support/components/SupportRequestDetails'
+import SupportRequestForm from '@/features/user/support/components/SupportRequestForm'
+import SupportRequestList from '@/features/user/support/components/SupportRequestList'
+import SupportSearch from '@/features/user/support/components/SupportSearch'
 
 /**
  * The Customer Service / Help Centre.

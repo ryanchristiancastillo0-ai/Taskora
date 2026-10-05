@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react'
-import EmptyState from '@/shared/components/ui/EmptyState'
-import Spinner from '@/shared/components/ui/Spinner'
-import Button from '@/shared/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
+import Spinner from '@/components/ui/Spinner'
+import Button from '@/components/ui/Button'
 
 /**
  * The loading / error / empty trio every admin page needs, in one place.

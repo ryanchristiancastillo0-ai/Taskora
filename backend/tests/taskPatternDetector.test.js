@@ -1,7 +1,7 @@
 // Deterministic pattern-detection tests for the task-pattern engine.
 // Run with: node tests/taskPatternDetector.test.js
 const assert = require("assert");
-const detector = require("../src/services/user/taskPatternDetector.js");
+const detector = require("../src/services/tasks/taskPatternDetector.js");
 
 function detect(dates) {
   return detector.detectTaskPattern(dates);

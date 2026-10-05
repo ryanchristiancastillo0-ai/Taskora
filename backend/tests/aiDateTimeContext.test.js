@@ -15,7 +15,7 @@ const {
   buildDateTimePrompt,
 } = require("../src/utils/dateTime");
 
-const AIContextBuilder = require("../src/services/user/aiContextBuilder.js");
+const AIContextBuilder = require("../src/services/ai/aiContextBuilder.js");
 
 // 2026-09-26 14:37:15 in Asia/Manila (UTC+8) == 06:37:15 UTC.
 const MANILA_AFTERNOON = new Date("2026-09-26T06:37:15Z");

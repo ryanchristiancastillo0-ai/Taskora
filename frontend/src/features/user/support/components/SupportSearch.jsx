@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { ChevronRight, Search, X } from 'lucide-react'
-import Input from '@/shared/components/ui/Input'
-import { searchSupport } from '../supportContent'
+import Input from '@/components/ui/Input'
+import { searchSupport } from '@/features/user/support/supportContent'
 
 /**
  * Search over the content tree.

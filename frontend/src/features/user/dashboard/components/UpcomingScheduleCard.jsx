@@ -1,5 +1,5 @@
 import { CalendarDays } from 'lucide-react'
-import { useApp } from '../../context/AppContext'
+import { useApp } from '@/app/providers/AppContext'
 import {
   cx,
   dueLabel,
@@ -7,8 +7,8 @@ import {
   isOverdue,
   isToday,
   isTomorrow,
-} from '@/shared/utils/format'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
+} from '@/utils/format'
+import Card, { CardHeader } from '@/components/ui/Card'
 
 function dayLabel(date) {
   if (isToday(date)) return { text: 'Today', tone: 'text-danger' }

@@ -1,8 +1,8 @@
-import DataTable from '@/shared/components/ui/DataTable'
-import Avatar from '@/shared/components/ui/Avatar'
-import Badge from '@/shared/components/ui/Badge'
-import { PROJECT_STATUS } from '@/shared/constants'
-import { formatDate, timeAgo } from '@/shared/utils/format'
+import DataTable from '@/components/ui/DataTable'
+import Avatar from '@/components/ui/Avatar'
+import Badge from '@/components/ui/Badge'
+import { PROJECT_STATUS } from '@/constants'
+import { formatDate, timeAgo } from '@/utils/format'
 
 // System-wide project table. Read-only for the same reason the admin task table
 // is: the user app already owns project lifecycle, and an admin editing a

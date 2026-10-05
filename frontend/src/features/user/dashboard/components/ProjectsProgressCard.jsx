@@ -1,8 +1,8 @@
 import { FolderOpen } from 'lucide-react'
-import { useApp } from '../../context/AppContext'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
-import ProgressBar from '@/shared/components/ui/ProgressBar'
-import Badge from '@/shared/components/ui/Badge'
+import { useApp } from '@/app/providers/AppContext'
+import Card, { CardHeader } from '@/components/ui/Card'
+import ProgressBar from '@/components/ui/ProgressBar'
+import Badge from '@/components/ui/Badge'
 
 export function projectProgress(projects, tasks) {
   return projects.map((project) => {

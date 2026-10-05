@@ -13,8 +13,8 @@ const { setAuthCookies, REMEMBERED_REFRESH_MAX_AGE, REFRESH_TOKEN_MAX_AGE } =
   require("../src/utils/cookie");
 const { signRefreshToken, REMEMBERED_REFRESH_EXPIRES_IN } =
   require("../src/utils/jwt");
-const { loginSchema } = require("../src/validators/user/authValidators.js");
-const AuthService = require("../src/services/user/authService.js");
+const { loginSchema } = require("../src/validators/auth/authValidators.js");
+const AuthService = require("../src/services/auth/authService.js");
 
 const DAY = 24 * 60 * 60 * 1000;
 

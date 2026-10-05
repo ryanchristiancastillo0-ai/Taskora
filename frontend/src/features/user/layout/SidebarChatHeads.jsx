@@ -1,8 +1,8 @@
 import { MessageCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { cx, timeAgo } from '@/shared/utils/format'
-import Avatar from '@/shared/components/ui/Avatar'
-import { useApp } from '../context/AppContext'
+import { cx, timeAgo } from '@/utils/format'
+import Avatar from '@/components/ui/Avatar'
+import { useApp } from '@/app/providers/AppContext'
 
 /**
  * Recent direct-message heads for the signed-in user.

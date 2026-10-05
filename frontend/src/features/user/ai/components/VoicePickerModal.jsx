@@ -1,7 +1,7 @@
 import { Volume2 } from 'lucide-react'
-import Button from '@/shared/components/ui/Button'
-import Modal from '@/shared/components/ui/Modal'
-import { cx } from '@/shared/utils/format'
+import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
+import { cx } from '@/utils/format'
 
 export default function VoicePickerModal({
   open,

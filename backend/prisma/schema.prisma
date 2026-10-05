@@ -238,6 +238,8 @@ model User {
   email        String @unique
   passwordHash String
 
+  googleId String? @unique
+
   firstName String
   lastName  String?
   avatarUrl String?

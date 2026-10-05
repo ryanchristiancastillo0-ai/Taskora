@@ -1,9 +1,9 @@
 import { Eye } from 'lucide-react'
-import Avatar from '@/shared/components/ui/Avatar'
-import Badge from '@/shared/components/ui/Badge'
-import DataTable from '@/shared/components/ui/DataTable'
-import Dropdown, { MenuItem } from '@/shared/components/ui/Dropdown'
-import { formatDate, timeAgo } from '@/shared/utils/format'
+import Avatar from '@/components/ui/Avatar'
+import Badge from '@/components/ui/Badge'
+import DataTable from '@/components/ui/DataTable'
+import Dropdown, { MenuItem } from '@/components/ui/Dropdown'
+import { formatDate, timeAgo } from '@/utils/format'
 import {
   issueLabel,
   problemLabel,

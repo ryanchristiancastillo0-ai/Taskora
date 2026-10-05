@@ -1,6 +1,6 @@
 import { FileText } from 'lucide-react'
-import { resolveAssetUrl } from '@/shared/api/client'
-import { cx, formatBytes } from '@/shared/utils/format'
+import { resolveAssetUrl } from '@/services/api/client'
+import { cx, formatBytes } from '@/utils/format'
 
 export default function FileChip({ attachment, bubble }) {
   const isImage = (attachment.fileType || '').startsWith('image/')

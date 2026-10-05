@@ -5,10 +5,10 @@ const assert = require("assert");
 
 const {
   updateNotificationSettingsSchema,
-} = require("../src/validators/user/settingsValidators.js");
+} = require("../src/validators/users/settingsValidators.js");
 const { parseSchema } = require("../src/utils/validate");
-const SettingsService = require("../src/services/user/settingsService.js");
-const NotificationSoundService = require("../src/services/user/notificationSoundService.js");
+const SettingsService = require("../src/services/users/settingsService.js");
+const NotificationSoundService = require("../src/services/notifications/notificationSoundService.js");
 
 const SOUNDS = [
   { id: "s1", name: "Bell", path: "/uploads/notifications/current.wav", isDefault: true, createdAt: new Date(1) },

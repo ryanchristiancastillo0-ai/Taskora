@@ -1,8 +1,8 @@
-import DataTable from '@/shared/components/ui/DataTable'
-import Avatar from '@/shared/components/ui/Avatar'
-import Badge from '@/shared/components/ui/Badge'
-import { NOTIFICATION_TYPES } from '@/shared/constants'
-import { formatDate, timeAgo } from '@/shared/utils/format'
+import DataTable from '@/components/ui/DataTable'
+import Avatar from '@/components/ui/Avatar'
+import Badge from '@/components/ui/Badge'
+import { NOTIFICATION_TYPES } from '@/constants'
+import { formatDate, timeAgo } from '@/utils/format'
 
 // Every notification the platform has generated, for inspection. Read-only:
 // the labels reuse NOTIFICATION_TYPES from the shared constants, so a type can

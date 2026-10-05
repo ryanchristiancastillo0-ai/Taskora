@@ -1,9 +1,9 @@
 import { Minus, Plus, Target } from 'lucide-react'
 import { useState } from 'react'
-import Button from '@/shared/components/ui/Button'
-import Input from '@/shared/components/ui/Input'
-import Modal from '@/shared/components/ui/Modal'
-import ProgressBar from '@/shared/components/ui/ProgressBar'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Modal from '@/components/ui/Modal'
+import ProgressBar from '@/components/ui/ProgressBar'
 
 // Coarse nudges for the common case, plus the usual milestones for setting a
 // round number in one tap.
@@ -155,7 +155,7 @@ export default function GoalProgressModal({ open, onClose, goal, actions, pushTo
           ))}
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-border-subtle pt-4">
+        <div className="flex flex-wrap justify-end gap-3 border-t border-border-subtle pt-4">
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>

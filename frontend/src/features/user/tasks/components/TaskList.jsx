@@ -1,6 +1,6 @@
 import { ListChecks } from 'lucide-react'
 import TaskItem from './TaskItem'
-import EmptyState from '@/shared/components/ui/EmptyState'
+import EmptyState from '@/components/ui/EmptyState'
 
 export default function TaskList({ tasks, onEdit, emptyTitle = 'No tasks here yet' }) {
   if (tasks.length === 0) {

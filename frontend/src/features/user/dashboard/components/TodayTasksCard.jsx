@@ -1,8 +1,8 @@
 import { Plus } from 'lucide-react'
-import { useApp } from '../../context/AppContext'
-import { isToday } from '@/shared/utils/format'
-import Card, { CardHeader } from '@/shared/components/ui/Card'
-import TaskList from '../../tasks/components/TaskList'
+import { useApp } from '@/app/providers/AppContext'
+import { isToday } from '@/utils/format'
+import Card, { CardHeader } from '@/components/ui/Card'
+import TaskList from '@/features/user/tasks/components/TaskList'
 
 export default function TodayTasksCard({ onEdit, onNew, onViewAll }) {
   const { data } = useApp()

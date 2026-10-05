@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { askAdmin, clearCopilotThread, getCopilotThread } from '../api/adminApi'
+import { askAdmin, clearCopilotThread, getCopilotThread } from '@/features/admin/services/adminApi'
 
 // How often the thread is re-read while something is unanswered. The socket
 // normally delivers the answer first, so this is the fallback for a dropped
@@ -253,7 +253,7 @@ export default function useAdminCopilot() {
     const attach = async (attempt) => {
       if (cancelled) return
 
-      const { getSocket } = await import('@/shared/api/socket')
+      const { getSocket } = await import('@/services/api/socket')
       if (cancelled) return
       socket = getSocket()
 

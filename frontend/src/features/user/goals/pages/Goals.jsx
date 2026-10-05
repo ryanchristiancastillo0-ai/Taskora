@@ -1,28 +1,28 @@
 import { Flag, Plus, Target } from 'lucide-react'
 import { useState } from 'react'
-import PageHeader from '@/shared/components/layouts/PageHeader'
-import Badge from '@/shared/components/ui/Badge'
-import Button from '@/shared/components/ui/Button'
-import DataTable from '@/shared/components/ui/DataTable'
-import DatePicker from '@/shared/components/ui/DatePicker'
-import EmptyState from '@/shared/components/ui/EmptyState'
-import EmptyStateModal from '@/shared/components/ui/EmptyStateModal'
-import Input from '@/shared/components/ui/Input'
+import PageHeader from '@/components/layout/PageHeader'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import DataTable from '@/components/ui/DataTable'
+import DatePicker from '@/components/ui/DatePicker'
+import EmptyState from '@/components/ui/EmptyState'
+import EmptyStateModal from '@/components/ui/EmptyStateModal'
+import Input from '@/components/ui/Input'
 import ItemActionsModal, {
   ItemActionsTrigger,
-} from '@/shared/components/ui/ItemActionsModal'
-import Modal from '@/shared/components/ui/Modal'
-import ProgressBar from '@/shared/components/ui/ProgressBar'
-import SegmentedControl from '@/shared/components/ui/SegmentedControl'
-import Select from '@/shared/components/ui/Select'
-import Textarea from '@/shared/components/ui/Textarea'
+} from '@/components/ui/ItemActionsModal'
+import Modal from '@/components/ui/Modal'
+import ProgressBar from '@/components/ui/ProgressBar'
+import SegmentedControl from '@/components/ui/SegmentedControl'
+import Select from '@/components/ui/Select'
+import Textarea from '@/components/ui/Textarea'
 import useListView, {
   LIST_VIEW_OPTIONS,
-} from '@/shared/hooks/useListView'
-import { useApp } from '../../context/AppContext'
-import GoalProgressModal from '../components/GoalProgressModal'
-import { GOAL_CATEGORIES } from '@/shared/constants/index'
-import { cx, formatDate, timeAgo } from '@/shared/utils/format'
+} from '@/hooks/useListView'
+import { useApp } from '@/app/providers/AppContext'
+import GoalProgressModal from '@/features/user/goals/components/GoalProgressModal'
+import { GOAL_CATEGORIES } from '@/constants/index'
+import { cx, formatDate, timeAgo } from '@/utils/format'
 
 const toneByCategory = {
   CAREER: 'indigo',
@@ -436,7 +436,7 @@ export default function Goals() {
             value={values.targetDate}
             onChange={(next) => setValues({ ...values, targetDate: next })}
           />
-          <div className="mt-1 flex justify-end gap-3">
+          <div className="mt-1 flex flex-wrap justify-end gap-3">
             <Button variant="ghost" type="button" onClick={closeForm}>
               Cancel
             </Button>

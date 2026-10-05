@@ -2,7 +2,7 @@
 // Run with: node tests/aiProviderRetry.test.js
 const assert = require("assert");
 const AppError = require("../src/utils/AppError");
-const AIProvider = require("../src/services/user/ai/aiProvider.js");
+const AIProvider = require("../src/services/ai/aiProvider.js");
 
 function transientError(statusCode) {
   return new AppError("Upstream denied", statusCode, { isTransient: true });
