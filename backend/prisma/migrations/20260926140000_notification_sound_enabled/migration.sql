@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `notificationsettings` ADD COLUMN `soundEnabled` BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE `NotificationSettings` ADD COLUMN `soundEnabled` BOOLEAN NOT NULL DEFAULT true;

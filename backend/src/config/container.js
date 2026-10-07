@@ -14,6 +14,8 @@ const CacheService = require("../services/platform/cacheService.js");
 const EmailService = require("../services/platform/emailService.js");
 const EmailValidationService = require("../services/auth/emailValidationService.js");
 const NotificationService = require("../services/notifications/notificationService.js");
+const PushService = require("../services/notifications/pushService.js");
+const DailySummaryService = require("../services/notifications/dailySummaryService.js");
 const ReminderScheduler = require("../services/tasks/reminderScheduler.js");
 const RealtimeService = require("../services/platform/realtimeService.js");
 const FileService = require("../services/platform/fileService.js");
@@ -27,11 +29,14 @@ const TtsService = require("../services/ai/ttsService.js");
 
 const cacheService = new CacheService(redis);
 const realtimeService = new RealtimeService();
+const pushService = new PushService(prisma);
 const emailService = new EmailService();
 const emailValidationService = new EmailValidationService();
 const notificationService = new NotificationService(prisma, cacheService, realtimeService, {
   queue: emailQueue,
+  pushService,
 });
+const dailySummaryService = new DailySummaryService(prisma, emailService, emailQueue);
 const reminderScheduler = new ReminderScheduler(taskReminderQueue, redis);
 const fileService = new FileService();
 
@@ -96,9 +101,11 @@ module.exports = {
   supportService,
   cacheService,
   realtimeService,
+  pushService,
   emailService,
   emailValidationService,
   notificationService,
+  dailySummaryService,
   reminderScheduler,
   fileService,
   personalizationService,

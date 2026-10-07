@@ -29,4 +29,32 @@ const updateNotificationSettingsSchema = z
   })
   .strict();
 
-module.exports = { updateSettingsSchema, updateNotificationSettingsSchema };
+// Body of POST /settings/notifications/push/subscribe. The browser's
+// PushSubscription exposes exactly these three fields; anything else is a
+// validation failure rather than silently stored.
+const pushSubscribeSchema = z
+  .object({
+    endpoint: z.string().trim().url().max(500),
+    keys: z
+      .object({
+        p256dh: z.string().trim().min(1).max(500),
+        auth: z.string().trim().min(1).max(500),
+      })
+      .strict(),
+    userAgent: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
+
+// Body of DELETE /settings/notifications/push/subscribe.
+const pushUnsubscribeSchema = z
+  .object({
+    endpoint: z.string().trim().url().max(500),
+  })
+  .strict();
+
+module.exports = {
+  updateSettingsSchema,
+  updateNotificationSettingsSchema,
+  pushSubscribeSchema,
+  pushUnsubscribeSchema,
+};

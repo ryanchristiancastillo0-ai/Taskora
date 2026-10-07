@@ -6,3 +6,7 @@ node_modules
 
 # Local file uploads
 /uploads/
+
+# Database TLS certificates (Aiven CA). The file is a secret per environment and
+# arrives in production as a mounted secret, so nothing in here is committed.
+/certificates/

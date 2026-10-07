@@ -279,6 +279,7 @@ model User {
 
   conversations AIConversation[]
   notifications Notification[]
+  pushSubscriptions     PushSubscription[]
 
   // The admin console's own copilot history. Separate from `conversations` on
   // purpose: these asks are answered from platform-wide aggregates and are only
@@ -404,6 +405,12 @@ model NotificationSettings {
   aiSuggestions     Boolean @default(true)
   dailySummary      Boolean @default(true)
 
+  // The last day the daily-summary email was actually delivered, in calendar
+  // terms of the user's own timezone. The recurring scheduler reads this to know
+  // a summary has already gone out today, so the scan is idempotent even when the
+  // job fires several times over the course of a day or the server restarts.
+  dailySummaryLastSentAt DateTime?
+
   emailNotifications Boolean @default(false)
   pushNotifications  Boolean @default(true)
 
@@ -426,6 +433,36 @@ model NotificationSettings {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([notificationSoundId])
+}
+
+// ====================
+// PUSH SUBSCRIPTION
+// ====================
+
+// One browser push subscription per device. A user can have several (phone,
+// laptop, a second browser), so the row is keyed on the unique endpoint the
+// browser issues rather than on the user: the same user subscribing from two
+// devices is two rows, and re-subscribing with the same endpoint renews the row.
+model PushSubscription {
+  id     String @id @default(cuid())
+  userId String
+
+  // Web Push protocol fields from the browser's pushManager. `endpoint` is the
+  // URL the push service uses to reach this device; p256dh and auth are the
+  // encryption keys the payload must be encrypted to before delivery.
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  // Kept for support/debugging only; never sent anywhere.
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ====================

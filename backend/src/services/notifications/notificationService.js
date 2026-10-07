@@ -56,11 +56,17 @@ const EMAIL_PREF_FIELDS = [
 ];
 
 class NotificationService {
-  constructor(prisma, cacheService = null, realtimeService = null, { queue = null } = {}) {
+  constructor(
+    prisma,
+    cacheService = null,
+    realtimeService = null,
+    { queue = null, pushService = null } = {}
+  ) {
     this.prisma = prisma;
     this.cacheService = cacheService;
     this.realtimeService = realtimeService;
     this.emailQueue = queue;
+    this.pushService = pushService;
   }
 
   /**
@@ -123,6 +129,24 @@ class NotificationService {
     });
 
     await this.queueEmail(userId, { title, message, type });
+
+    // Browser push, fire-and-forget like email: a push failure (or the whole
+    // feature being unconfigured) must never fail the in-app notification the
+    // user already received. sendToUser is already a silent no-op when the push
+    // switch is off, when the server has no VAPID keys, or on a device-less
+    // account; the catch here is only for genuinely unexpected errors.
+    if (this.pushService) {
+      this.pushService
+        .sendToUser(userId, {
+          title,
+          body: message,
+          url: "/",
+          tag: notification.id,
+        })
+        .catch((error) =>
+          console.error(`[NotificationService] push failed: ${error.message}`)
+        );
+    }
 
     if (this.realtimeService) {
       const payload = await this.prisma.notification.findUnique({

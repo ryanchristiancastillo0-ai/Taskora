@@ -3,6 +3,8 @@ const AppError = require("../../utils/AppError.js");
 const {
   updateSettingsSchema,
   updateNotificationSettingsSchema,
+  pushSubscribeSchema,
+  pushUnsubscribeSchema,
 } = require("../../validators/users/settingsValidators.js");
 
 /**
@@ -19,10 +21,11 @@ const EMAIL_CATEGORY_LABELS = {
 };
 
 class SettingsService {
-  constructor(prisma, notificationSoundService, emailService) {
+  constructor(prisma, notificationSoundService, emailService, pushService = null) {
     this.prisma = prisma;
     this.notificationSoundService = notificationSoundService;
     this.emailService = emailService;
+    this.pushService = pushService;
   }
 
   async ensureUserSettings(userId) {
@@ -143,6 +146,40 @@ class SettingsService {
     });
 
     return { sentTo: user.email, enabledTypes };
+  }
+
+  /**
+   * What the Settings page needs to know about push before offering the switch:
+   * whether this server has VAPID keys at all, and the public key the browser
+   * must present to subscribe. A server without keys reports itself honestly
+   * rather than letting the client subscribe to a service that cannot push.
+   */
+  async getPushConfig() {
+    return this.pushService ? this.pushService.config() : { enabled: false, publicKey: null };
+  }
+
+  /**
+   * Records one device's browser subscription. Validated before storage — the
+   * browser's keys and endpoint are untrusted input from a client the server
+   * does not own.
+   */
+  async subscribePush(userId, data) {
+    if (!this.pushService) {
+      throw new AppError("Web Push is not available", 503);
+    }
+
+    const parsed = parseSchema(pushSubscribeSchema, data);
+    const { endpoint, keys, userAgent } = parsed;
+
+    return this.pushService.subscribe(userId, { endpoint, ...keys, userAgent });
+  }
+
+  /** Drops one device's subscription (its own unsubscribe call). */
+  async unsubscribePush(userId, data) {
+    if (!this.pushService) return { removed: false };
+
+    const parsed = parseSchema(pushUnsubscribeSchema, data);
+    return this.pushService.unsubscribe(userId, parsed.endpoint);
   }
 }
 

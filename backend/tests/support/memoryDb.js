@@ -140,31 +140,52 @@ function compareValues(a, b) {
   return a < b ? -1 : 1;
 }
 
-/** One scalar field against one Prisma filter. */
+/** One scalar field against one Prisma filter.
+ *
+ * A scalar filter may carry several operators at once — Prisma's common way of
+ * expressing an inclusive range is `{ gte: X, lt: Y }`. Every operator in the
+ * condition must hold, `equals`/`not`/`in`/`notIn` exclusive, ranges combined.
+ */
 function matchField(value, condition) {
   if (condition === null) return value === null || value === undefined;
   if (!isPlainObject(condition)) return compareValues(value, condition) === 0;
 
-  if ("equals" in condition) return matchField(value, condition.equals);
-  if ("not" in condition) return !matchField(value, condition.not);
-  if ("in" in condition) return condition.in.some((entry) => matchField(value, entry));
-  if ("notIn" in condition) return !condition.notIn.some((entry) => matchField(value, entry));
+  if ("equals" in condition) {
+    if (!matchField(value, condition.equals)) return false;
+  }
+  if ("not" in condition) {
+    if (matchField(value, condition.not)) return false;
+  }
+  if ("in" in condition) {
+    if (!condition.in.some((entry) => matchField(value, entry))) return false;
+  }
+  if ("notIn" in condition) {
+    if (condition.notIn.some((entry) => matchField(value, entry))) return false;
+  }
   if ("contains" in condition) {
     const needle = String(condition.contains).toLowerCase();
-    return String(value ?? "").toLowerCase().includes(needle);
+    if (!String(value ?? "").toLowerCase().includes(needle)) return false;
   }
   if ("startsWith" in condition) {
-    return String(value ?? "").toLowerCase().startsWith(String(condition.startsWith).toLowerCase());
+    if (!String(value ?? "").toLowerCase().startsWith(String(condition.startsWith).toLowerCase())) return false;
   }
   if ("endsWith" in condition) {
-    return String(value ?? "").toLowerCase().endsWith(String(condition.endsWith).toLowerCase());
+    if (!String(value ?? "").toLowerCase().endsWith(String(condition.endsWith).toLowerCase())) return false;
   }
-  if ("gte" in condition) return compareValues(value, condition.gte) >= 0;
-  if ("gt" in condition) return compareValues(value, condition.gt) > 0;
-  if ("lte" in condition) return compareValues(value, condition.lte) <= 0;
-  if ("lt" in condition) return compareValues(value, condition.lt) < 0;
+  if ("gte" in condition) {
+    if (compareValues(value, condition.gte) < 0) return false;
+  }
+  if ("gt" in condition) {
+    if (compareValues(value, condition.gt) <= 0) return false;
+  }
+  if ("lte" in condition) {
+    if (compareValues(value, condition.lte) > 0) return false;
+  }
+  if ("lt" in condition) {
+    if (compareValues(value, condition.lt) >= 0) return false;
+  }
 
-  throw new Error(`[memoryDb] unsupported filter on a scalar: ${JSON.stringify(condition)}`);
+  return true;
 }
 
 function isRelation(model, key) {

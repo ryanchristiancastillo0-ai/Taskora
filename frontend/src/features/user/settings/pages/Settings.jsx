@@ -1,5 +1,5 @@
 import { Globe, Sun } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PageHeader from '@/components/layout/PageHeader'
 import Button from '@/components/ui/Button'
 import Card, { CardHeader } from '@/components/ui/Card'
@@ -9,6 +9,7 @@ import Toggle from '@/components/ui/Toggle'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useApp } from '@/app/providers/AppContext'
 import { useTheme } from '@/app/providers/ThemeProvider'
+import { getPushAvailability } from '@/utils/notificationPush'
 import { THEME_OPTIONS } from '@/constants/index'
 import { cx } from '@/utils/format'
 
@@ -22,9 +23,8 @@ export const NOTIFICATION_SETTING_LABELS = {
   pushNotifications: 'Push notifications',
 }
 
-// Descriptions per switch. The two that decide whether an email can leave the
-// server at all carry the explanation, because the rest of the list was six rows
-// of identical switches that all did nothing and gave no hint of what they meant.
+// Descriptions per switch. The one that decides whether an email can leave the
+// server at all carries the explanation; the rest are plain what-they-do rows.
 const NOTIFICATION_SETTING_DESCRIPTIONS = {
   emailNotifications:
     'Master switch. Off means no email is sent at all, whatever the switches below say.',
@@ -35,14 +35,6 @@ const NOTIFICATION_SETTING_DESCRIPTIONS = {
   dailySummary: 'Emails a recap of your day.',
   pushNotifications: 'Browser push, on devices that support it.',
 }
-
-// Toggles that still describe a feature the backend does not implement. Kept
-// visible rather than hidden so the list matches the database, but marked so the
-// page does not claim a working feature it cannot deliver.
-const UNIMPLEMENTED_NOTIFICATION_KEYS = new Set([
-  'dailySummary',
-  'pushNotifications',
-])
 
 export function SettingRow({ label, description, children }) {
   return (
@@ -65,6 +57,24 @@ export default function SettingsPage() {
     data.settings.showCompletedTasks
   )
   const [notifications, setNotifications] = useState(data.settings.notifications)
+
+  // Whether this server can actually deliver browser push. The toggle stays
+  // rendered (a server misconfiguration is not a reason to hide someone's
+  // choice) but is disabled when push cannot work, so the page never claims a
+  // switch whose tap would just error.
+  const [pushServerEnabled, setPushServerEnabled] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    getPushAvailability()
+      .then((availability) => {
+        if (alive) setPushServerEnabled(availability.enabled)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // Deleting the account is the one irreversible action on this page, so it goes
   // through the shared ConfirmDialog rather than a bare window.confirm. The
@@ -250,15 +260,21 @@ export default function SettingsPage() {
                       </Button>
                     </>
                   )}
-                  {UNIMPLEMENTED_NOTIFICATION_KEYS.has(key) && (
+                  {key === 'pushNotifications' && !pushServerEnabled && (
                     <span className="rounded-md bg-surface-container px-1.5 py-0.5 text-[11px] font-medium text-ink-faint">
-                      Not available yet
+                      Not enabled on this server
                     </span>
                   )}
                   <Toggle
                     checked={notifications[key]}
                     onChange={() => toggleNotification(key)}
                     label={label}
+                    disabled={key === 'pushNotifications' && !pushServerEnabled}
+                    title={
+                      key === 'pushNotifications' && !pushServerEnabled
+                        ? 'Push is not enabled on this server'
+                        : label
+                    }
                   />
                 </div>
               </SettingRow>

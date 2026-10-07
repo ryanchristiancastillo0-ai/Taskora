@@ -6,5 +6,5 @@
 -- generated Prisma client had to be regenerated before the service would stop
 -- throwing on unknown arguments, and regeneration is blocked while the dev
 -- server holds the query engine — an avoidable footgun for no real gain.
-ALTER TABLE `admincopilotexchange` DROP COLUMN `quotaExhausted`,
+ALTER TABLE `AdminCopilotExchange` DROP COLUMN `quotaExhausted`,
     DROP COLUMN `retryAfterMs`;

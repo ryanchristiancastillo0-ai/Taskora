@@ -2,10 +2,19 @@ const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000;
 const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 const REMEMBERED_REFRESH_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 
+// Defaults to "none" in production because the SPA and the API live on
+// different sites (e.g. Vite on localhost against a Render backend, or a
+// frontend domain against a *.onrender.com API). "strict" would silently stop
+// the browser from attaching the cookies to any cross-site request, making
+// every authenticated call 401 → "Session expired". Override per deployment
+// with COOKIE_SAMESITE=strict|lax|none when both sides share a site.
+const COOKIE_SAMESITE = process.env.COOKIE_SAMESITE;
+const sameSite = COOKIE_SAMESITE || (process.env.NODE_ENV === "production" ? "none" : "strict");
+
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
+  sameSite,
 };
 
 // Without maxAge these become session cookies, so they are dropped when the

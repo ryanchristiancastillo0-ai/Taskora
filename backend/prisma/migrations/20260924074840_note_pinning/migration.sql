@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `note` ADD COLUMN `pinned` BOOLEAN NOT NULL DEFAULT false,
+ALTER TABLE `Note` ADD COLUMN `pinned` BOOLEAN NOT NULL DEFAULT false,
     ADD COLUMN `pinnedAt` DATETIME(3) NULL;
 
 -- CreateIndex

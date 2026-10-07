@@ -2,6 +2,7 @@ const AppError = require("../../utils/AppError.js");
 const { passwordResetEmail } = require("../../utils/emails/passwordResetEmail.js");
 const { notificationEmail } = require("../../utils/emails/notificationEmail.js");
 const { notificationTestEmail } = require("../../utils/emails/notificationTestEmail.js");
+const { dailySummaryEmail } = require("../../utils/emails/dailySummaryEmail.js");
 const { changeEmailEmail } = require("../../utils/emails/changeEmailEmail.js");
 
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
@@ -119,6 +120,14 @@ class EmailService {
     return this.sendTemplate(email, () =>
       notificationEmail({ title, message, type, actionUrl, actionLabel, details })
     );
+  }
+
+  /**
+   * The daily recap, queued by DailySummaryService and rendered at delivery
+   * time from freshly-shaped data, not stored HTML.
+   */
+  async sendDailySummary(message) {
+    return this.sendTemplate(message.email, () => dailySummaryEmail(message));
   }
 
   /**

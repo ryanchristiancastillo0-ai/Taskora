@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `notificationsettings` ADD COLUMN `notificationSoundId` VARCHAR(191) NULL;
+ALTER TABLE `NotificationSettings` ADD COLUMN `notificationSoundId` VARCHAR(191) NULL;
 
 -- CreateTable
 CREATE TABLE `NotificationSound` (

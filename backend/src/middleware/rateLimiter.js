@@ -1,16 +1,23 @@
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
+
 const { redis } = require("../config/redis");
 const { verifyAccessToken } = require("../utils/jwt");
-const { RateLimitService } = require("../services/platform/rateLimitService");
+const { createRateLimitStore } = require("../services/platform/rateLimitStore");
 
 /**
- * Redis-backed rate limiting, as reusable Express middleware.
+ * Rate limiting, as reusable Express middleware.
  *
- * One service instance, built here from the shared connection in
- * config/redis.js — the same client CacheService, ReminderScheduler and the
- * BullMQ queues use. There is deliberately no second connection: a second
- * client would double the sockets against the same server for no benefit, and
- * the counters have to be visible to the queues' Redis anyway to mean anything
- * across instances.
+ * One express-rate-limit middleware per policy, over a store that is Redis when
+ * Redis is usable and in-memory when it is not — see
+ * services/platform/rateLimitStore.js, which owns that decision. There is no
+ * second limiter and no second set of policy numbers: a client cannot tell which
+ * store answered, which is the point.
+ *
+ * The Redis counters are shared by every instance of this process, because
+ * spreading requests over replicas to get a fresh budget each does not work. The
+ * store is built from the connection in config/redis.js — the same client
+ * CacheService, ReminderScheduler and the BullMQ queues use. There is
+ * deliberately no second connection.
  *
  * A policy is a scope, a limit and a window. Routes never touch Redis and never
  * build a key: they mount a limiter, and the scope is what keeps one policy's
@@ -64,8 +71,6 @@ const LIMITS = {
   },
 };
 
-const rateLimitService = new RateLimitService(redis);
-
 /**
  * Who a request is counted against.
  *
@@ -78,12 +83,16 @@ const rateLimitService = new RateLimitService(redis);
  * not verify simply falls through to the address, and authMiddleware still
  * answers the request exactly as it did before.
  *
- * The address is `req.ip`, and `trust proxy` is deliberately left unset. That is
- * the safe default and it matches what AuditService already records, with the
- * same caveat noted there: behind a proxy that address is the proxy's until
- * `trust proxy` is configured to match the topology. Turning it on to sharpen
- * unauthenticated buckets would also change what every existing audit row holds,
- * which is a wider decision than this one.
+ * The address is `req.ip`, run through express-rate-limit's `ipKeyGenerator` so
+ * an IPv6 client is counted on its /56 rather than being able to walk through the
+ * limit one address at a time. IPv4 addresses come out unchanged.
+ *
+ * `trust proxy` is deliberately left unset. That is the safe default and it
+ * matches what AuditService already records, with the same caveat noted there:
+ * behind a proxy that address is the proxy's until `trust proxy` is configured to
+ * match the topology. Turning it on to sharpen unauthenticated buckets would also
+ * change what every existing audit row holds, which is a wider decision than this
+ * one.
  */
 function identifyRequest(req) {
   if (req.user?.userId) {
@@ -103,7 +112,50 @@ function identifyRequest(req) {
     }
   }
 
-  return `ip:${req.ip || "unknown"}`;
+  return `ip:${ipKeyGenerator(req.ip || "unknown")}`;
+}
+
+/**
+ * The 429.
+ *
+ * The shared failure envelope from errorMiddleware, written directly rather than
+ * thrown: this is a middleware-level rejection of the same kind authMiddleware
+ * and adminGuard already return, and it has to add headers that a thrown AppError
+ * has nowhere to carry.
+ *
+ * The values are read off `req.rateLimit`, which express-rate-limit fills in
+ * before calling the handler, and come from whichever store was used — so a
+ * request turned away while Redis was down is indistinguishable from one turned
+ * away while Redis was up.
+ */
+function rateLimitExceeded(req, res) {
+  const info = req.rateLimit || {};
+  const limit = info.limit ?? 0;
+
+  // At least one second: a sub-second remainder rounded down would tell the
+  // client to retry immediately, which is how a client ends up building a tight
+  // retry loop against a limit it is already over.
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil(((info.resetTime?.getTime() ?? Date.now()) - Date.now()) / 1000)
+  );
+
+  // Re-asserted here rather than left to the library, so the three headers mean
+  // exactly what they meant before this was moved onto express-rate-limit.
+  res.set("RateLimit-Limit", String(limit));
+  res.set("RateLimit-Remaining", String(info.remaining ?? 0));
+  res.set("RateLimit-Reset", String(retryAfterSeconds));
+
+  // The whole point of the header: a client that is turned away is told how long
+  // to wait, in the unit RFC 9110 defines for it, rather than having to guess
+  // from the window.
+  res.set("Retry-After", String(retryAfterSeconds));
+
+  return res.status(429).json({
+    success: false,
+    message: `Too many requests. Please try again in ${retryAfterSeconds} seconds.`,
+    retryAfter: retryAfterSeconds,
+  });
 }
 
 /**
@@ -114,50 +166,47 @@ function identifyRequest(req) {
  * as it looks at the mount point, so `req.path` is already relative to it.
  */
 function createRateLimiter({ scope, limit, windowMs, match, skip }) {
-  return function rateLimitMiddleware(req, res, next) {
-    if (typeof skip === "function" && skip(req)) {
-      return next();
-    }
+  return rateLimit({
+    windowMs,
+    limit,
+    store: createRateLimitStore({ client: redis, scope, windowMs }),
 
-    if (typeof match === "function" && !match(req)) {
-      return next();
-    }
+    // The scope is the first segment of the store's key prefix, so the key
+    // itself is only the identifier. That is what keeps two policies from ever
+    // landing on one counter, and what keeps a counter from ever being mistaken
+    // for a CacheService value.
+    keyGenerator: identifyRequest,
 
-    return rateLimitService
-      .consume({ scope, identifier: identifyRequest(req), limit, windowMs })
-      .then((result) => {
-        // Redis is unreachable. Allow the request and say nothing on the
-        // response: a RateLimit header that is not backed by a counter is worse
-        // than no header, because a client would trust it.
-        if (result.degraded) {
-          return next();
-        }
+    // Both predicates collapse into the one thing express-rate-limit asks about:
+    // should this request be counted at all.
+    skip: (req) =>
+      (typeof skip === "function" && skip(req)) ||
+      (typeof match === "function" && !match(req)),
 
-        res.set("RateLimit-Limit", String(result.limit));
-        res.set("RateLimit-Remaining", String(result.remaining));
-        res.set("RateLimit-Reset", String(result.retryAfterSeconds));
+    // draft-6 is the draft whose header set is RateLimit-Limit,
+    // RateLimit-Remaining and RateLimit-Reset — the three this API has always
+    // published, with the same names and the same meaning. (draft-7 replaced them
+    // with a single combined RateLimit header, which would have changed what
+    // clients read.) It adds one header Taskora did not send before,
+    // RateLimit-Policy, which restates the same limit and window. The legacy
+    // X-RateLimit-* set stays off.
+    standardHeaders: "draft-6",
+    legacyHeaders: false,
 
-        if (result.allowed) {
-          return next();
-        }
+    handler: rateLimitExceeded,
 
-        // The whole point of the header: a client that is turned away is told how
-        // long to wait, in the unit RFC 9110 defines for it, rather than having
-        // to guess from the window.
-        res.set("Retry-After", String(result.retryAfterSeconds));
-
-        // The shared failure envelope from errorMiddleware, written directly
-        // rather than thrown: this is a middleware-level rejection of the same
-        // kind authMiddleware and adminGuard already return, and it has to add
-        // headers that a thrown AppError has nowhere to carry.
-        return res.status(429).json({
-          success: false,
-          message: `Too many requests. Please try again in ${result.retryAfterSeconds} seconds.`,
-          retryAfter: result.retryAfterSeconds,
-        });
-      })
-      .catch(next);
-  };
+    // Two of the library's validations are per-request warnings about proxy
+    // headers, and a client can trigger either one just by sending
+    // X-Forwarded-For — which would turn a rate limiter into a way to fill the
+    // log. Both describe a decision this file documents above (trust proxy is
+    // deliberately unset), so they are the only two turned off; every
+    // configuration-time check stays on.
+    validate: {
+      trustProxy: true,
+      xForwardedForHeader: false,
+      forwardedHeader: false,
+    },
+  });
 }
 
 const apiRateLimiter = createRateLimiter({

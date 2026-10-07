@@ -5,4 +5,4 @@
 
 */
 -- AlterTable
-ALTER TABLE `aimessage` MODIFY `role` VARCHAR(191) NOT NULL;
+ALTER TABLE `AIMessage` MODIFY `role` VARCHAR(191) NOT NULL;

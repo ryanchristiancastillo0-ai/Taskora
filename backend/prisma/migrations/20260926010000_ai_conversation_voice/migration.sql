@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `aiconversation` ADD COLUMN `voiceId` VARCHAR(191) NULL;
+ALTER TABLE `AIConversation` ADD COLUMN `voiceId` VARCHAR(191) NULL;

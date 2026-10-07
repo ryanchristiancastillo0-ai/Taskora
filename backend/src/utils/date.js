@@ -1,10 +1,12 @@
-// Local-calendar date helpers for pattern detection.
+// Local-calendar date helpers for pattern detection and the daily summary.
 //
 // Dates are handled as "YYYY-MM-DD" strings representing a calendar day
 // (no time component) so day arithmetic is stable across DST switches,
 // month/year boundaries and leap years. This mirrors the approach already
 // used by HabitCompletion (store the local "YYYY-MM-DD" to avoid MySQL
-// timezone shifting).
+// timezone shifting). The timezone-aware functions in the second half power
+// the daily-summary scheduler, which must compare against a user's local
+// calendar, never UTC.
 
 const DAY_MS = 86_400_000;
 
@@ -48,4 +50,57 @@ function addDaysKey(key, offsetDays) {
   return `${year}-${month}-${day}`;
 }
 
-module.exports = { localKey, parseKey, utcTime, daysBetweenKeys, addDaysKey };
+// The fields of `now` as the wall clock reads in `timeZone`. Built once here so
+// the three timezone-aware helpers below share one Intl call.
+function partsInZone(now, timeZone) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+  }).formatToParts(now);
+}
+
+function fieldOf(parts, type) {
+  return Number(parts.find((part) => part.type === type).value);
+}
+
+// The epoch of local midnight in `timeZone` for `now`, as a UTC-time Date. This
+// is the only safe way to build a "start of today / yesterday / this week" bound
+// for a user whose calendar is not UTC: a date-only string would not, and DST
+// shifts are handled by Intl, not by adding 24h to a wall-clock reading.
+function startOfDayInZone(now, timeZone) {
+  const parts = partsInZone(now, timeZone);
+  return new Date(
+    Date.UTC(fieldOf(parts, "year"), fieldOf(parts, "month") - 1, fieldOf(parts, "day"))
+  );
+}
+
+// Hour of day (0-23) as the wall clock reads in `timeZone`. Used by the daily
+// summary scheduler to decide whether a user's local time has reached the send
+// hour.
+function hourInZone(now, timeZone) {
+  return fieldOf(partsInZone(now, timeZone), "hour");
+}
+
+// Appears as the day would read on a local calendar in `timeZone".
+function dayKeyInZone(now, timeZone) {
+  const parts = partsInZone(now, timeZone);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${fieldOf(parts, "year")}-${pad(fieldOf(parts, "month"))}-${pad(fieldOf(parts, "day"))}`;
+}
+
+module.exports = {
+  localKey,
+  parseKey,
+  utcTime,
+  daysBetweenKeys,
+  addDaysKey,
+  startOfDayInZone,
+  hourInZone,
+  dayKeyInZone,
+};

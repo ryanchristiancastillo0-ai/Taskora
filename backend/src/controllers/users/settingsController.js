@@ -49,6 +49,39 @@ class SettingsController {
       data: result,
     });
   });
+
+  getPushConfig = asyncHandler(async (req, res) => {
+    const data = await this.settingsService.getPushConfig();
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  });
+
+  subscribePush = asyncHandler(async (req, res) => {
+    const subscription = await this.settingsService.subscribePush(
+      req.user.userId,
+      req.body
+    );
+
+    return res.status(201).json({
+      success: true,
+      data: { subscription },
+    });
+  });
+
+  unsubscribePush = asyncHandler(async (req, res) => {
+    const result = await this.settingsService.unsubscribePush(
+      req.user.userId,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  });
 }
 
 module.exports = SettingsController;

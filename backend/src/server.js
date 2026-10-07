@@ -22,14 +22,21 @@ const {
 } = require("./queues/aiGenerationQueue");
 const { startEmailWorker, emailQueue } = require("./queues/emailQueue");
 const {
+  startDailySummaryWorker,
+  scheduleDailySummaryScan,
+  dailySummaryQueue,
+} = require("./queues/dailySummaryQueue");
+const {
   startAdminCopilotWorker,
 } = require("./queues/adminCopilotQueue");
 const {
   taskSuggestionService,
+  dailySummaryService,
   aiService,
   emailService,
   emailValidationService,
   adminCopilotService,
+  pushService,
 } = require("./config/container");
 
 // The Express app lives in app.js so a test can require it without this file's
@@ -167,6 +174,12 @@ async function start() {
     );
   }
 
+  if (!pushService.isConfigured()) {
+    console.warn(
+      "[PushService] VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not set. Browser push will be disabled until set."
+    );
+  }
+
   if (emailValidationService.isEnabled() && !emailValidationService.isConfigured()) {
     console.warn(
       "[EmailValidationService] NODE_ENV=production but ZEROBOUNCE_API_KEY is not set. Registration will fail with 503 until set."
@@ -230,13 +243,38 @@ async function start() {
 
     let emailWorker;
     try {
-      emailWorker = startEmailWorker({ emailService });
+      emailWorker = startEmailWorker({ emailService, dailySummaryService });
       console.log("Email worker started");
     } catch (error) {
       console.warn(
         `[email] worker unavailable (${error.message}) — notification email disabled`
       );
       emailWorker = { close: async () => {} };
+    }
+
+    // The daily summary is the one email that arrives without a user action to
+    // trigger it, so it runs on its own clock: a recurring scan enqueues a recap
+    // per eligible account for the hour their own timezone has reached. Same
+    // degradation contract as every other worker — if the scheduler cannot
+    // start, nothing else in the product behaves differently.
+    let dailySummaryWorker;
+    let dailySummaryInterval = Math.max(
+      60_000,
+      Number(process.env.DAILY_SUMMARY_CHECK_INTERVAL_MS) || 1_800_000
+    );
+    try {
+      dailySummaryWorker = startDailySummaryWorker({ dailySummaryService });
+      console.log("Daily summary worker started");
+
+      await scheduleDailySummaryScan(dailySummaryQueue, dailySummaryInterval);
+      console.log(
+        `Daily summary scan scheduled every ${dailySummaryInterval}ms`
+      );
+    } catch (error) {
+      console.warn(
+        `[daily-summary] worker/scheduler unavailable (${error.message}) — daily summaries disabled`
+      );
+      dailySummaryWorker = { close: async () => {} };
     }
 
     // Started last, and for the same reason the copilot degrades rather than
@@ -269,6 +307,11 @@ async function start() {
         console.warn(`[patterns] worker close failed: ${error.message}`);
       }
       try {
+        await dailySummaryWorker.close();
+      } catch (error) {
+        console.warn(`[daily-summary] worker close failed: ${error.message}`);
+      }
+      try {
         await aiWorker.close();
       } catch (error) {
         console.warn(`[ai] worker close failed: ${error.message}`);
@@ -287,6 +330,11 @@ async function start() {
         await patternSuggestionQueue.close();
       } catch (error) {
         console.warn(`[patterns] queue close failed: ${error.message}`);
+      }
+      try {
+        await dailySummaryQueue.close();
+      } catch (error) {
+        console.warn(`[daily-summary] queue close failed: ${error.message}`);
       }
       try {
         await aiGenerationQueue.close();

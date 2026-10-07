@@ -1,5 +1,6 @@
 import { normalizeNotificationSound, normalizeSettings } from '@/services/api/normalize'
 import { setNotificationSoundUrl, setNotificationSoundEnabled } from '@/utils/notificationSound'
+import { syncPushPreference } from '@/utils/notificationPush'
 import { settingsApi } from '@/features/user/settings/api/settingsApi'
 import { accountApi } from '@/features/user/profile/api/accountApi'
 import { authApi } from '@/features/auth/api/authApi'
@@ -17,26 +18,44 @@ export function createSettingsActions({ data, setData, pushToast }) {
       }))
     })
 
-  const updateNotificationSettings = (patch) =>
-    settingsApi.updateNotifications(patch).then((result) => {
-      const notificationSettings = result?.notificationSettings ?? result ?? {}
-      setData((prev) => ({
-        ...prev,
-        settings: {
-          ...prev.settings,
-          // Only the boolean toggles are coerced; the selected sound is an
-          // object and must survive untouched.
-          notifications: {
-            ...prev.settings.notifications,
-            ...Object.fromEntries(
-              Object.entries(notificationSettings)
-                .filter(([, value]) => typeof value === 'boolean')
-                .map(([key, value]) => [key, Boolean(value)])
-            ),
+  const updateNotificationSettings = (patch) => {
+    const pushPref = patch?.pushNotifications
+
+    // Push is the one switch with an effect beyond its row: it registers or
+    // removes a browser subscription. Sync it BEFORE saving the preference, so
+    // a denied permission prompt or an unconfigured server leaves the switch
+    // off instead of a saved "on" that can never ring. Enabling throws on
+    // failure (nothing is saved); disabling never throws, because turning off
+    // must always work.
+    const pushPrep =
+      pushPref === true
+        ? syncPushPreference(true)
+        : pushPref === false
+          ? syncPushPreference(false).catch(() => null)
+          : Promise.resolve(null)
+
+    return pushPrep
+      .then(() => settingsApi.updateNotifications(patch))
+      .then((result) => {
+        const notificationSettings = result?.notificationSettings ?? result ?? {}
+        setData((prev) => ({
+          ...prev,
+          settings: {
+            ...prev.settings,
+            // Only the boolean toggles are coerced; the selected sound is an
+            // object and must survive untouched.
+            notifications: {
+              ...prev.settings.notifications,
+              ...Object.fromEntries(
+                Object.entries(notificationSettings)
+                  .filter(([, value]) => typeof value === 'boolean')
+                  .map(([key, value]) => [key, Boolean(value)])
+              ),
+            },
           },
-        },
-      }))
-    })
+        }))
+      })
+  }
 
   // Sends one real email to the signed-in user's own inbox. The toast is
   // deliberate: this is the only switch on the screen with no in-app effect,

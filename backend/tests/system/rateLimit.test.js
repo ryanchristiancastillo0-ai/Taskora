@@ -1,17 +1,24 @@
 "use strict";
 
 /**
- * Redis-backed rate limiting.
+ * Redis-backed rate limiting, with an in-memory fallback underneath it.
  *
- * Two halves, deliberately.
+ * Three parts, deliberately.
  *
  * The first drives the limiter through its own factory on a throwaway Express
  * app, which is the only way to test a two-request window or twenty concurrent
  * callers without waiting a minute or hammering the real application's routes.
- * It is the real middleware and the real Redis script — only the policy numbers
- * and the endpoint are the test's.
+ * It is the real middleware and the real store — only the policy numbers and the
+ * endpoint are the test's.
  *
- * The second drives the routes the limiters are actually mounted on, so what is
+ * The second covers what happens when Redis is not reachable. That is a different
+ * code path with a different answer than before: an unreachable Redis used to
+ * mean no rate limiting at all, and now means the same limits counted in this
+ * process instead. It gets its own file (rateLimitFallback.test.js) for the half
+ * that needs the application's own limiters, because a limiter that has spent
+ * an in-memory budget keeps it for the rest of its window.
+ *
+ * The third drives the routes the limiters are actually mounted on, so what is
  * asserted is the wiring in app.js and not just the middleware. Those limits come
  * from the environment, which is why the overrides below are set before the app is
  * required (the middleware reads them once, at load) and removed in afterAll:
@@ -24,6 +31,11 @@ process.env.RATE_LIMIT_AUTH_MAX = "6";
 process.env.RATE_LIMIT_PASSWORD_RESET_MAX = "2";
 process.env.RATE_LIMIT_AI_MAX = "3";
 process.env.RATE_LIMIT_UPLOAD_MAX = "2";
+// How long a known-down Redis is left alone before a request is used to test
+// whether it came back. Short here so the failover path can be exercised without
+// a five-second wait; it only has any effect once Redis has actually failed.
+process.env.RATE_LIMIT_REDIS_PROBE_MS = "150";
+process.env.RATE_LIMIT_REDIS_RECONNECT_MS = "10";
 
 const express = require("express");
 const cookieParser = require("cookie-parser");
@@ -42,6 +54,7 @@ const {
   createRateLimiter,
   identifyRequest,
 } = require("../../src/middleware/rateLimiter");
+const { RECONNECT_INTERVAL_MS } = require("../../src/services/platform/rateLimitStore");
 
 const RATE_LIMIT_ENV = [
   "RATE_LIMIT_API_MAX",
@@ -49,12 +62,20 @@ const RATE_LIMIT_ENV = [
   "RATE_LIMIT_PASSWORD_RESET_MAX",
   "RATE_LIMIT_AI_MAX",
   "RATE_LIMIT_UPLOAD_MAX",
+  "RATE_LIMIT_REDIS_PROBE_MS",
+  "RATE_LIMIT_REDIS_RECONNECT_MS",
 ];
 
 afterAll(() => {
   for (const name of RATE_LIMIT_ENV) {
     delete process.env[name];
   }
+});
+
+afterEach(() => {
+  // Any test that takes Redis down puts it back, so the next one starts in the
+  // mode the rest of this file is written against.
+  redisStub.redis.goUp();
 });
 
 beforeEach(resetState);
@@ -243,27 +264,189 @@ describe("the limiter as middleware", () => {
     expect((await request(server).get("/ping").set("Content-Type", "multipart/form-data; boundary=x")).status).toBe(429);
   });
 
-  it("should let requests through when Redis cannot be reached", async () => {
+  it("should count in Redis while Redis is reachable", async () => {
     const server = limitedApp(limiterFor({ scope: "unit", limit: 1 }));
-    const realEval = redisStub.redis.eval;
 
-    // What config/redis.js produces when Redis is down: every command rejects,
+    await request(server).get("/ping");
+
+    // The counter is a Redis key, not a Map in this process — that is what makes
+    // the budget shared rather than per replica.
+    expect(rateLimitKeys("unit")).toEqual(["taskora:ratelimit:unit:ip:127.0.0.1"]);
+    expect(counterFor("unit")).toBe(1);
+  });
+});
+
+describe("the limiter when Redis is not reachable", () => {
+  it("should keep limiting instead of letting everything through", async () => {
+    const server = limitedApp(limiterFor({ scope: "unit", limit: 2 }));
+
+    // What a stopped Redis server looks like from here: every command rejects,
     // because enableOfflineQueue is off.
-    redisStub.redis.eval = async () => {
-      throw new Error("Stream isn't writeable");
+    redisStub.redis.goDown();
+
+    const statuses = [];
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const response = await request(server).get("/ping");
+      statuses.push(response.status);
+      // The headers are still published, and this time they are telling the
+      // truth: there really is a counter behind them, in this process. That is
+      // the whole difference from failing open.
+      expect(response.headers["ratelimit-limit"]).toBe("2");
+    }
+
+    expect(statuses).toEqual([200, 200, 429, 429]);
+
+    // Nothing reached Redis, so there is no counter there.
+    expect(rateLimitKeys("unit")).toEqual([]);
+  });
+
+  it("should answer a blocked request with the same envelope as Redis mode", async () => {
+    const server = limitedApp(limiterFor({ scope: "unit", limit: 1 }));
+
+    redisStub.redis.goDown();
+
+    await request(server).get("/ping");
+    const blocked = await request(server).get("/ping");
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.body).toMatchObject({
+      success: false,
+      message: expect.stringContaining("Too many requests"),
+    });
+    expect(blocked.body.retryAfter).toBeGreaterThan(0);
+    expect(blocked.headers["retry-after"]).toBe(String(blocked.body.retryAfter));
+    expect(blocked.headers["ratelimit-remaining"]).toBe("0");
+  });
+
+  it("should stop touching Redis once it is known to be down", async () => {
+    const server = limitedApp(limiterFor({ scope: "unit", limit: 100 }));
+    const realCall = redisStub.redis.call;
+    let attempts = 0;
+
+    redisStub.redis.call = (...args) => {
+      attempts += 1;
+      return realCall(...args);
     };
+    redisStub.redis.goDown();
 
     try {
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        const response = await request(server).get("/ping");
-        expect(response.status).toBe(200);
-        // No RateLimit header either: one that is not backed by a counter is
-        // worse than none, because a client would believe it.
-        expect(response.headers["ratelimit-limit"]).toBeUndefined();
+      for (let attempt = 0; attempt < 24; attempt += 1) {
+        expect((await request(server).get("/ping")).status).toBe(200);
       }
     } finally {
-      redisStub.redis.eval = realEval;
+      redisStub.redis.call = realCall;
     }
+
+    // One attempt to discover the outage, then one per probe window. Without the
+    // throttle every request would fail a command and a busy app would turn one
+    // outage into a wall of Redis errors.
+    expect(attempts).toBeGreaterThan(0);
+    expect(attempts).toBeLessThanOrEqual(4);
+  });
+
+  it("should resume Redis mode when Redis comes back, without a restart", async () => {
+    const server = limitedApp(limiterFor({ scope: "unit", limit: 2 }));
+
+    // Spend the whole Redis budget first, so recovery can be told apart from a
+    // limiter that quietly started counting from scratch.
+    await request(server).get("/ping");
+    await request(server).get("/ping");
+    expect((await request(server).get("/ping")).status).toBe(429);
+    expect(counterFor("unit")).toBe(3);
+
+    redisStub.redis.goDown();
+    await wait(200);
+
+    // The in-memory budget is its own, and starts fresh — the fallback counts
+    // this process's traffic, which is the deal when Redis is unreachable.
+    expect((await request(server).get("/ping")).status).toBe(200);
+
+    redisStub.redis.goUp();
+    await wait(200);
+
+    // Back on the shared counter, which never stopped at 3.
+    expect((await request(server).get("/ping")).status).toBe(429);
+    expect(counterFor("unit")).toBe(4);
+  });
+
+  it("should ask the shared client to reconnect once ioredis has given up", async () => {
+    const server = limitedApp(limiterFor({ scope: "unit", limit: 100 }));
+
+    // config/redis.js stops retrying after ten attempts, and ioredis does not
+    // reconnect on its own after that: status "end", every command rejected for
+    // good. Nothing short of this is how that recovers without a restart.
+    //
+    // The wait first is the reconnect throttle from a previous test expiring.
+    // The state is per Redis connection rather than per limiter, because an outage
+    // is one event however many policies noticed it.
+    await wait(RECONNECT_INTERVAL_MS + 50);
+    redisStub.redis.goDead();
+
+    expect((await request(server).get("/ping")).status).toBe(200);
+    await wait(50);
+
+    expect(redisStub.redis.connectCount).toBe(1);
+    // The reconnect succeeded, so the next request is counted in Redis again.
+    await wait(200);
+    await request(server).get("/ping");
+    expect(rateLimitKeys("unit")).toHaveLength(1);
+  });
+
+  it("should throttle the reconnect, so a long outage does not open one per request", async () => {
+    const server = limitedApp(limiterFor({ scope: "unit", limit: 100 }));
+
+    // A client that stays dead: connect() is refused, exactly as it would be if
+    // Redis were still stopped. The counter is still incremented, because what is
+    // being counted is how often the limiter asked, not whether it worked.
+    const realConnect = redisStub.redis.connect;
+    redisStub.redis.connect = async () => {
+      redisStub.redis.connectCount += 1;
+      throw new Error("Connection is closed.");
+    };
+    await wait(RECONNECT_INTERVAL_MS + 50);
+    redisStub.redis.goDead();
+
+    try {
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        expect((await request(server).get("/ping")).status).toBe(200);
+      }
+      await wait(50);
+    } finally {
+      redisStub.redis.connect = realConnect;
+    }
+
+    // Twelve requests against a dead server, one reconnect attempt.
+    expect(redisStub.redis.connectCount).toBe(1);
+  });
+
+  it("should keep the two modes' counters separate per policy", async () => {
+    const first = limitedApp(limiterFor({ scope: "one", limit: 1 }), "/one");
+    const second = limitedApp(limiterFor({ scope: "two", limit: 1 }), "/two");
+
+    redisStub.redis.goDown();
+
+    expect((await request(first).get("/one")).status).toBe(200);
+    // Same address, same moment, different policy: an exhausted /one budget must
+    // not spend the /two budget, in fallback mode either.
+    expect((await request(first).get("/one")).status).toBe(429);
+    expect((await request(second).get("/two")).status).toBe(200);
+  });
+
+  it("should give each account its own fallback budget", async () => {
+    const server = limitedApp(limiterFor({ scope: "unit", limit: 1 }));
+
+    const alice = await register();
+    const bob = await register();
+    const aliceCookie = `accessToken=${cookiesFrom(alice.response).accessToken.value}`;
+    const bobCookie = `accessToken=${cookiesFrom(bob.response).accessToken.value}`;
+
+    redisStub.redis.goDown();
+
+    expect((await request(server).get("/ping").set("Cookie", [aliceCookie])).status).toBe(200);
+    expect((await request(server).get("/ping").set("Cookie", [aliceCookie])).status).toBe(429);
+    // One account spending its budget says nothing about another's, and the
+    // account is read off the cookie without authMiddleware having run.
+    expect((await request(server).get("/ping").set("Cookie", [bobCookie])).status).toBe(200);
   });
 });
 
