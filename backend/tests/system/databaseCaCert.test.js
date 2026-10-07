@@ -229,3 +229,85 @@ describe("config/prisma.js wiring", () => {
     expect(mockConstructorCalls).toEqual([]);
   });
 });
+
+// The Render fallback resolves the certificate against the Secret File mount.
+// SECRETS_DIR is captured at require time, so every case here re-loads the
+// module inside an isolated registry after pointing TASKORA_SECRETS_DIR at a
+// throwaway directory.
+describe("the Render Secret File fallback", () => {
+  let secretsDir;
+
+  beforeEach(() => {
+    secretsDir = fs.mkdtempSync(path.join(os.tmpdir(), "taskora-secrets-"));
+    delete process.env.TASKORA_SECRETS_DIR;
+  });
+
+  afterEach(() => {
+    delete process.env.TASKORA_SECRETS_DIR;
+    if (secretsDir) fs.rmSync(secretsDir, { recursive: true, force: true });
+  });
+
+  function loadWithSecrets() {
+    let fn;
+    jest.isolateModules(() => {
+      process.env.TASKORA_SECRETS_DIR = secretsDir;
+      fn = require("../../src/config/databaseSsl.js").withDatabaseCaCertificate;
+      delete process.env.TASKORA_SECRETS_DIR;
+    });
+    return fn;
+  }
+
+  // Configured value that can never resolve to a real file: the same basename
+  // trick the tests need, but clearly absent so the fallback is what runs even
+  // on machines where backend/certificates/aiven-ca.pem really exists.
+  const BROKEN_DEV_PATH = path.join("certificates-not-checked-in", "aiven-ca.pem");
+
+  function writeSecret(name) {
+    fs.writeFileSync(path.join(secretsDir, name), "-----BEGIN CERTIFICATE-----\nnot-a-real-certificate\n-----END CERTIFICATE-----\n");
+  }
+
+  it("should use a Secret File whose name matches the configured basename", () => {
+    writeSecret("aiven-ca.pem");
+
+    // The dev value copied to Render: the basename is aiven-ca.pem, the file
+    // is not under backend/, and the mounted secret is picked up instead.
+    const result = loadWithSecrets()(DATABASE_URL, BROKEN_DEV_PATH);
+
+    expect(readParam(result, "sslcert")).toBe(path.join(secretsDir, "aiven-ca.pem"));
+    expect(readParam(result, "sslaccept")).toBe("strict");
+  });
+
+  it("should use the unique PEM-looking Secret File when names do not match", () => {
+    writeSecret("whatever-the-dashboard-let-me-name-it.pem");
+
+    const result = loadWithSecrets()(DATABASE_URL, BROKEN_DEV_PATH);
+
+    expect(readParam(result, "sslcert")).toBe(path.join(secretsDir, "whatever-the-dashboard-let-me-name-it.pem"));
+  });
+
+  it("should fail with the configured path named when more than one Secret File looks like a PEM", () => {
+    writeSecret("one.pem");
+    writeSecret("two.pem");
+
+    expect(() => loadWithSecrets()(DATABASE_URL, BROKEN_DEV_PATH)).toThrow(/DB_CA_CERT_PATH/);
+  });
+
+  it("should auto-discover a mounted certificate in production with no env variable set", () => {
+    writeSecret("aiven-ca.pem");
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const result = loadWithSecrets()(DATABASE_URL);
+
+      expect(readParam(result, "sslcert")).toBe(path.join(secretsDir, "aiven-ca.pem"));
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it("should stay permissive in development when no certificate is configured", () => {
+    const result = loadWithSecrets()(DATABASE_URL, undefined);
+
+    expect(result).toBe(DATABASE_URL);
+  });
+});
