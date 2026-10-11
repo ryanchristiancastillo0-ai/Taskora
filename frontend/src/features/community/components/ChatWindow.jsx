@@ -25,7 +25,12 @@ export default function ChatWindow({
   const { data, actions, typing, pushToast, chatLoading, chatError } = useApp()
   const [draft, setDraft] = useState('')
   const [pending, setPending] = useState([])
-  const [sending, setSending] = useState(false)
+  // Sends are not serialised any more — each one owns its own bubble — so the
+  // spinner is tracked per conversation. Keyed by conversation id rather than
+  // a single flag, otherwise a send still in flight would dim the composer of
+  // whichever chat the user switched to while it was uploading.
+  const [inFlight, setInFlight] = useState({})
+  const sending = Boolean(inFlight[conversationId])
   const fileInputRef = useRef(null)
   // The composer grew into a textarea, so its height is content-driven. The
   // ref lets the reset after a send shrink it back without a second pass.
@@ -192,24 +197,36 @@ export default function ChatWindow({
     actions.setMessageReaction(conversationId, messageId, emoji).catch(() => {})
   }
 
-  const submit = async (event) => {
+  const submit = (event) => {
     if (event) event.preventDefault()
     const content = draft.trim()
     const files = pendingRef.current.map((item) => item.file)
     if (!content && files.length === 0) return
 
-    setSending(true)
-    try {
-      await actions.sendChatMessage(conversationId, content || null, files)
-      setDraft('')
-      clearPending()
-      updateTyping(false)
-    } catch {
-      // The action already surfaced the toast. Keep the tray and the draft so
-      // a failed upload never costs the user their staged files or text.
-    } finally {
-      setSending(false)
-    }
+    // Optimistic: the bubble goes into the thread and the composer empties in
+    // this same tick, then the request runs behind it. A slow upload would
+    // otherwise leave the text sitting in the box with no sign it was sent.
+    setDraft('')
+    clearPending()
+    updateTyping(false)
+
+    const cid = conversationId
+    setInFlight((prev) => ({ ...prev, [cid]: (prev[cid] || 0) + 1 }))
+    actions
+      .sendChatMessage(cid, content || null, files)
+      .catch(() => {
+        // The action toasted; the bubble stays behind flagged "Failed · Retry"
+        // with its payload, so nothing the user typed is lost.
+      })
+      .finally(() => {
+        setInFlight((prev) => {
+          const next = { ...prev }
+          const remaining = (next[cid] || 0) - 1
+          if (remaining > 0) next[cid] = remaining
+          else delete next[cid]
+          return next
+        })
+      })
   }
 
   // Staging only: nothing is uploaded until the message is actually sent.
@@ -373,6 +390,7 @@ export default function ChatWindow({
                     senderName={memberName(message.senderId)}
                     senderAvatar={userById(message.senderId)?.avatarUrl}
                     onReact={(emoji) => onReact(message.id, emoji)}
+                    onRetry={() => actions.retryChatMessage(message.id)}
                   />
                 )}
                 </div>

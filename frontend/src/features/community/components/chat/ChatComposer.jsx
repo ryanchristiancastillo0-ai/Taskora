@@ -1,5 +1,6 @@
 import { FileText, Paperclip, Send, X } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import { cx } from '@/utils/format'
 import { MAX_ATTACHMENTS, formatBytes } from './messageFormat'
 
 /**
@@ -98,11 +99,19 @@ export default function ChatComposer({
           aria-label="Message"
           className="max-h-36 min-h-10 min-w-0 flex-1 resize-none rounded-field border border-border-subtle bg-canvas px-4 py-2.5 text-sm leading-snug text-ink placeholder:text-ink-faint transition-all focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
         />
+        {/* Never disabled by `sending`: the draft is cleared the instant the
+            bubble is written, so the button cannot double-post, and holding
+            the composer shut for the length of an upload is exactly the lag
+            this optimistic flow exists to remove. */}
         <Button
           type="submit"
           icon={Send}
-          disabled={sending || (!draft.trim() && pending.length === 0)}
-          className="mb-0.5 flex-shrink-0 !px-3"
+          disabled={!draft.trim() && pending.length === 0}
+          aria-busy={sending}
+          className={cx(
+            'mb-0.5 flex-shrink-0 !px-3',
+            sending && 'opacity-70'
+          )}
           aria-label="Send message"
         />
       </div>

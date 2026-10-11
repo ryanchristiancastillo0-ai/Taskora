@@ -278,7 +278,18 @@ export default function ProfilePage() {
             <div className="divide-y divide-border-subtle">
               <PrefRow label="Plan" value="Free" />
               <PrefRow label="Active devices" value="3" />
-              <PrefRow label="Member since" value="2026" />
+              <PrefRow
+                label="Member since"
+                value={
+                  data.user.createdAt
+                    ? new Date(data.user.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                    : '—'
+                }
+              />
             </div>
           </Card>
           <Card>

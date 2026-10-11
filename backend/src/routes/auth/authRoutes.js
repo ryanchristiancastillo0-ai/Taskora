@@ -4,6 +4,7 @@ const prisma = require("../../config/prisma.js");
 const AuthService = require("../../services/auth/authService.js");
 const PasswordService = require("../../services/auth/passwordService.js");
 const GoogleAuthService = require("../../services/auth/googleAuthService.js");
+const GitHubAuthService = require("../../services/auth/githubAuthService.js");
 const AuthController = require("../../controllers/auth/authController.js");
 const authMiddleware = require("../../middleware/authMiddleware.js");
 const { emailService, emailValidationService, auditService, supportService } = require("../../config/container.js");
@@ -36,7 +37,26 @@ const googleAuthService = new GoogleAuthService(
   passwordService,
   supportService
 );
-const authController = new AuthController(authService, auditService, googleAuthService);
+
+// GitHub Sign-In. Same three arguments and the same reasoning as the Google
+// service above: it reads the accounts through this prisma, hashes nothing on
+// its own path, and tells the admins about a new account through the same
+// notifier. The only thing it asks of configuration is three values that are
+// checked per request rather than per boot, so adding them later does not need
+// a restart and leaving them out gives a clear message instead of a provider
+// error.
+const githubAuthService = new GitHubAuthService(
+  prisma,
+  passwordService,
+  supportService
+);
+
+const authController = new AuthController(
+  authService,
+  auditService,
+  googleAuthService,
+  githubAuthService
+);
 
 router.post("/register", authController.register);
 router.post("/login", authController.login);
@@ -57,5 +77,11 @@ router.get("/me", authMiddleware, authController.getCurrentUser);
 // token-exchange oracle.
 router.get("/google", authController.googleStart);
 router.get("/google/callback", authController.googleCallback);
+
+// GitHub Sign-In. Same two rules, same reason: top-level navigations with no
+// body, no one signed in yet, still behind the /api/auth rate limiter so the
+// callback cannot be used as an unauthenticated token-exchange oracle.
+router.get("/github", authController.githubStart);
+router.get("/github/callback", authController.githubCallback);
 
 module.exports = router;

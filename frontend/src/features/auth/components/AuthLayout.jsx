@@ -3,14 +3,15 @@ import { API_URL } from '@/services/api/client'
 import Spinner from '@/components/ui/Spinner'
 
 /**
- * Sends the browser to the backend's Google entry point.
+ * Sends the browser to the backend's OAuth entry point for one provider.
  *
  * A full-page navigation, deliberately, and not an axios call like every other
  * request in the app. Both ends of the OAuth exchange are browser navigations:
- * this leaves Taskora for accounts.google.com, and Google sends the browser back
- * to the backend callback, which sets the auth cookies and redirects to the
- * frontend again. `fetch` cannot do that — it would capture the redirect chain
- * and hand back an unreadable response instead of following it.
+ * this leaves Taskora for github.com or accounts.google.com, and the provider
+ * sends the browser back to the backend callback, which sets the auth cookies
+ * and redirects to the frontend again. `fetch` cannot do that — it would capture
+ * the redirect chain and hand back an unreadable response instead of following
+ * it.
  *
  * The URL is derived from the same VITE_BACKEND_URL the rest of the API uses, so
  * moving from localhost to a deployed host stays a one-line .env change.
@@ -25,13 +26,13 @@ import Spinner from '@/components/ui/Spinner'
  * person can retry once they have started it.
  *
  * `redirect: 'manual'` is deliberate. The default follows the redirect chain,
- * which here means ending up on Google's consent screen for a request we never
- * meant to make; we only care whether the backend answered at all.
+ * which here means ending up on the provider's consent screen for a request we
+ * never meant to make; we only care whether the backend answered at all.
  *
  * Returns `true` once the browser has been handed over, so the caller can show a
  * pending state. Returns `false` when the probe failed and nothing navigated.
  */
-export async function startGoogleSignIn() {
+async function startOAuthSignIn(path) {
   try {
     const controller = new AbortController()
     // Short on purpose. A healthy local backend answers /health in single-digit
@@ -57,23 +58,38 @@ export async function startGoogleSignIn() {
     return false
   }
 
-  window.location.assign(`${API_URL}/auth/google`)
+  window.location.assign(`${API_URL}${path}`)
   return true
 }
 
+/** "Continue with Google". See startOAuthSignIn. */
+export function startGoogleSignIn() {
+  return startOAuthSignIn('/auth/google')
+}
+
+/** "Continue with GitHub". See startOAuthSignIn. */
+export function startGitHubSignIn() {
+  return startOAuthSignIn('/auth/github')
+}
+
 /**
- * Why a Google sign-in did not finish, keyed by the code the backend sends back.
+ * Why an OAuth sign-in did not finish, keyed by the code the backend sends back.
  *
  * The callback cannot render this page's error state — it answers with a
  * redirect, so the only thing that can cross back to the browser is a short code
  * in the URL. The vocabulary is closed and lives here, so the backend never has
- * to put a provider message, a Google error string or anything else it has not
+ * to put a provider message, a GitHub error string or anything else it has not
  * classified into a link the user clicks.
+ *
+ * One table for both providers because there is one `authError` parameter; the
+ * backend distinguishes them at the only place it knows who it is talking about,
+ * by prefixing GitHub's codes with `github_`. Anything unprefixed stays a Google
+ * code, which is what keeps every existing bookmarked failure URL working.
  *
  * Every entry has to be safe to show a stranger who chose to click a link with a
  * crafted code in it, which is why none of them name a provider response.
  */
-const GOOGLE_ERROR_MESSAGES = {
+const AUTH_ERROR_MESSAGES = {
   cancelled: 'Google sign-in was cancelled.',
   invalid_state: 'That Google sign-in attempt expired. Please try again.',
   not_configured: 'Google sign-in is not available on this server yet.',
@@ -82,6 +98,16 @@ const GOOGLE_ERROR_MESSAGES = {
   account_conflict:
     'An account with that email already exists. Sign in with your password instead.',
   failed: 'Google sign-in is temporarily unavailable. Please try again.',
+
+  github_cancelled: 'GitHub sign-in was cancelled.',
+  github_invalid_state: 'That GitHub sign-in attempt expired. Please try again.',
+  github_not_configured: 'GitHub sign-in is not available on this server yet.',
+  github_invalid_callback: 'GitHub did not complete the sign-in. Please try again.',
+  github_incomplete_profile: 'GitHub did not share a verified email address.',
+  github_unavailable: 'GitHub sign-in is not available on this server yet.',
+  github_account_conflict:
+    'An account with that email already exists. Sign in with your password instead.',
+  github_failed: 'GitHub sign-in is temporarily unavailable. Please try again.',
 }
 
 /**
@@ -92,7 +118,7 @@ const GOOGLE_ERROR_MESSAGES = {
  * from. Any code not in the table above yields an empty string, which means an
  * invented one shows nothing rather than showing something unexpected.
  */
-export function readGoogleAuthError() {
+export function readAuthError() {
   try {
     const params = new URLSearchParams(window.location.search)
     const code = params.get('authError')
@@ -106,11 +132,11 @@ export function readGoogleAuthError() {
       `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
     )
 
-    return GOOGLE_ERROR_MESSAGES[code] ?? ''
+    return AUTH_ERROR_MESSAGES[code] ?? ''
   } catch {
     // Private browsing / blocked history API. The message is still worth showing
     // this once; it just stays in the URL until the next navigation.
-    return GOOGLE_ERROR_MESSAGES[
+    return AUTH_ERROR_MESSAGES[
       new URLSearchParams(window.location.search).get('authError')
     ] ?? ''
   }
@@ -244,36 +270,35 @@ export const authError =
 /**
  * The two social buttons.
  *
- * `onGoogle` is what "Continue with Google" does now; `onDisabled` is still what
- * GitHub does, because GitHub sign-in does not exist. Both props are optional, so
- * a page that passes neither simply reports every provider as unavailable rather
- * than throwing on a click.
+ * `onGoogle` and `onGitHub` are what each button does; `onDisabled` is the
+ * fallback for a button with no handler, which a page that passes neither uses
+ * to report every provider as unavailable rather than throwing on a click.
  *
- * `onGoogle` is awaited rather than fired and forgotten. It now probes the
- * backend first and resolves `false` when nothing is listening there, and this
- * is where that refusal becomes visible: the click reports the failure and the
- * button goes into a pending state for the duration of the probe so a second tap
+ * A handler is awaited rather than fired and forgotten. It probes the backend
+ * first and resolves `false` when nothing is listening there, and this is where
+ * that refusal becomes visible: the click reports the failure and the button
+ * goes into a pending state for the duration of the probe so a second tap
  * cannot queue a second navigation. The pending state is dropped again if the
  * probe refuses, because there is nothing left to wait for.
+ *
+ * One pending string rather than a boolean per button, so the two buttons cannot
+ * both navigate: while the backend is being probed there is exactly one
+ * navigation being prepared, and starting a second one would race it.
  */
-export function SocialAuthButtons({ onGoogle, onDisabled }) {
+export function SocialAuthButtons({ onGoogle, onGitHub, onDisabled }) {
   const unavailable = (label) => onDisabled?.(label)
-  const [checking, setChecking] = useState(false)
+  const [pending, setPending] = useState(null)
 
-  const handleGoogle = async () => {
-    if (!onGoogle) return unavailable('Google')
-    if (checking) return undefined
+  const handle = (label, action) => {
+    if (!action) return unavailable(label)
+    if (pending) return undefined
 
-    setChecking(true)
-    try {
-      // False means the backend was unreachable and the browser stayed put.
-      // The page's error state has been set by then; only a real navigation is
-      // still in flight, and leaving the button disabled is what keeps that
-      // navigation single.
-      await onGoogle()
-    } finally {
-      setChecking(false)
-    }
+    setPending(label)
+    // False means the backend was unreachable and the browser stayed put.
+    // The page's error state has been set by then; only a real navigation is
+    // still in flight, and leaving the buttons disabled is what keeps that
+    // navigation single.
+    action().finally(() => setPending(null))
     return undefined
   }
 
@@ -282,12 +307,12 @@ export function SocialAuthButtons({ onGoogle, onDisabled }) {
       <button
         type="button"
         aria-label="Sign in with Google"
-        aria-busy={checking}
-        disabled={checking}
-        onClick={handleGoogle}
+        aria-busy={pending === 'Google'}
+        disabled={Boolean(pending)}
+        onClick={() => handle('Google', onGoogle)}
         className="flex size-12 items-center justify-center rounded-full border border-auth-line bg-auth-card shadow-sm transition-colors hover:bg-auth-hover disabled:opacity-60"
       >
-        {checking ? (
+        {pending === 'Google' ? (
           <Spinner className="size-5 text-auth-ink" />
         ) : (
           <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -301,12 +326,18 @@ export function SocialAuthButtons({ onGoogle, onDisabled }) {
       <button
         type="button"
         aria-label="Sign in with GitHub"
-        onClick={() => unavailable('GitHub')}
-        className="flex size-12 items-center justify-center rounded-full border border-auth-line bg-auth-card shadow-sm transition-colors hover:bg-auth-hover"
+        aria-busy={pending === 'GitHub'}
+        disabled={Boolean(pending)}
+        onClick={() => handle('GitHub', onGitHub)}
+        className="flex size-12 items-center justify-center rounded-full border border-auth-line bg-auth-card shadow-sm transition-colors hover:bg-auth-hover disabled:opacity-60"
       >
-        <svg className="h-5 w-5 text-auth-ink" fill="currentColor" viewBox="0 0 24 24">
-          <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-        </svg>
+        {pending === 'GitHub' ? (
+          <Spinner className="size-5 text-auth-ink" />
+        ) : (
+          <svg className="h-5 w-5 text-auth-ink" fill="currentColor" viewBox="0 0 24 24">
+            <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+          </svg>
+        )}
       </button>
     </div>
   )

@@ -1,4 +1,4 @@
-import { Globe, Sun } from 'lucide-react'
+import { Globe, KeyRound, Lock, Mail, ShieldCheck, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import PageHeader from '@/components/layout/PageHeader'
 import Button from '@/components/ui/Button'
@@ -12,6 +12,9 @@ import { useTheme } from '@/app/providers/ThemeProvider'
 import { getPushAvailability } from '@/utils/notificationPush'
 import { THEME_OPTIONS } from '@/constants/index'
 import { cx } from '@/utils/format'
+import ChangeEmailModal from '@/features/user/profile/components/ChangeEmailModal'
+import ChangePasswordModal from '@/features/user/profile/components/ChangePasswordModal'
+import ForgotPasswordModal from '@/features/user/profile/components/ForgotPasswordModal'
 
 export const NOTIFICATION_SETTING_LABELS = {
   taskReminders: 'Task reminders',
@@ -50,6 +53,37 @@ export function SettingRow({ label, description, children }) {
   )
 }
 
+export function SecurityRow({ icon: Icon, label, value, hint, action, onClick }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="mt-0.5 flex size-8 flex-shrink-0 items-center justify-center rounded-lg bg-surface-soft text-ink-muted">
+          <Icon className="size-4" strokeWidth={2} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-ink">{label}</p>
+          {value && (
+            <p className="mt-0.5 truncate text-[13px] text-ink-muted">{value}</p>
+          )}
+          {hint && (
+            <p className="mt-0.5 text-xs leading-relaxed text-ink-faint">{hint}</p>
+          )}
+        </div>
+      </div>
+      {action && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onClick}
+          className="ml-11 shrink-0 sm:ml-0"
+        >
+          {action}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const { data, actions, pushToast } = useApp()
   const { theme, compactMode, setTheme, setCompactMode } = useTheme()
@@ -83,6 +117,9 @@ export default function SettingsPage() {
   // reusable one already renders inside the app's own Modal portal.
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deletingAccount, setDeletingAccount] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showForgotModal, setShowForgotModal] = useState(false)
 
   const runDeleteAccount = async () => {
     setDeletingAccount(true)
@@ -285,6 +322,17 @@ export default function SettingsPage() {
         <Card>
           <CardHeader title="About" subtitle="Product and region." />
           <div className="divide-y divide-border-subtle">
+            <SettingRow label="Member since">
+              <span className="text-sm font-medium text-ink">
+                {data.user.createdAt
+                  ? new Date(data.user.createdAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                  : '—'}
+              </span>
+            </SettingRow>
             <SettingRow label="Product language" description="Interface language.">
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink">
                 <Globe className="size-3.5 text-ink-muted" strokeWidth={2} />
@@ -297,6 +345,38 @@ export default function SettingsPage() {
                 v0.9.0 preview
               </span>
             </SettingRow>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            icon={ShieldCheck}
+            title="Security"
+            subtitle="Your sign-in details and how we reach you."
+          />
+          <div className="divide-y divide-border-subtle">
+            <SecurityRow
+              icon={Mail}
+              label="Email address"
+              value={data.user.email}
+              hint="We send a code to the new address before switching over."
+              action="Change email"
+              onClick={() => setShowEmailModal(true)}
+            />
+            <SecurityRow
+              icon={Lock}
+              label="Password"
+              hint="Confirm with a 6-digit code we email you."
+              action="Change password"
+              onClick={() => setShowPasswordModal(true)}
+            />
+            <SecurityRow
+              icon={KeyRound}
+              label="Forgot your password?"
+              hint="Signed in but locked out? We'll email you a reset code."
+              action="Reset password"
+              onClick={() => setShowForgotModal(true)}
+            />
           </div>
         </Card>
 
@@ -328,6 +408,30 @@ export default function SettingsPage() {
         cancelLabel="Keep my account"
         loading={deletingAccount}
         onConfirm={runDeleteAccount}
+      />
+
+      <ChangeEmailModal
+        open={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        currentEmail={data.user.email}
+        actions={actions}
+        pushToast={pushToast}
+      />
+
+      <ChangePasswordModal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        email={data.user.email}
+        actions={actions}
+        pushToast={pushToast}
+      />
+
+      <ForgotPasswordModal
+        open={showForgotModal}
+        onClose={() => setShowForgotModal(false)}
+        email={data.user.email}
+        actions={actions}
+        pushToast={pushToast}
       />
     </div>
   )

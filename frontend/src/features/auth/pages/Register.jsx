@@ -7,6 +7,7 @@ import AuthLayout, {
   authError,
   authField as field,
   authPrimaryButton,
+  startGitHubSignIn,
   startGoogleSignIn,
 } from '@/features/auth/components/AuthLayout'
 import { useApp } from '@/app/providers/AppContext'
@@ -25,6 +26,17 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
 
   const set = (key) => (event) => setValues({ ...values, [key]: event.target.value })
+
+  // Shared by both social buttons: a starter resolves false when its health
+  // probe found no backend. Say so here rather than letting the browser navigate
+  // to a dead port, which is what used to happen.
+  const handleSocialStart = async (start) => {
+    if (!(await start())) {
+      setError(
+        'Could not reach the Taskora server. Make sure the backend is running, then try again.'
+      )
+    }
+  }
 
   const submit = async (event) => {
     event.preventDefault()
@@ -149,16 +161,8 @@ export default function Register() {
           </p>
         </div>
         <SocialAuthButtons
-          onGoogle={async () => {
-            // startGoogleSignIn resolves false when its health probe found no
-            // backend. Say so here rather than letting the browser navigate to a
-            // dead port, which is what used to happen.
-            if (!(await startGoogleSignIn())) {
-              setError(
-                'Could not reach the Taskora server. Make sure the backend is running, then try again.'
-              )
-            }
-          }}
+          onGoogle={() => handleSocialStart(startGoogleSignIn)}
+          onGitHub={() => handleSocialStart(startGitHubSignIn)}
           onDisabled={(provider) =>
             pushToast(`${provider} sign-in isn't available yet`, 'info')
           }

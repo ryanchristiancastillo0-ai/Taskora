@@ -27,6 +27,7 @@ import { communityApi } from '@/features/community/api/communityApi'
 import { aiApi } from '@/features/user/ai/api/aiApi'
 import { settingsApi } from '@/features/user/settings/api/settingsApi'
 import { authApi } from '@/features/auth/api/authApi'
+import { isLocalId } from '@/app/providers/store/actions/community'
 import {
   setNotificationSoundEnabled,
   setNotificationSoundUrl,
@@ -190,8 +191,12 @@ export function useDataFetchers({
           setData((prev) => ({
             ...prev,
             chatMessages: [
+              // Rows this client is still sending (or retrying) are kept: the
+              // server does not have them yet, so dropping them here would
+              // erase a message the user was told had failed.
               ...prev.chatMessages.filter(
-                (item) => item.conversationId !== conversationId
+                (item) =>
+                  item.conversationId !== conversationId || isLocalId(item.id)
               ),
               ...messages,
             ],

@@ -7,7 +7,8 @@ import AuthLayout, {
   authError,
   authField,
   authPrimaryButton,
-  readGoogleAuthError,
+  readAuthError,
+  startGitHubSignIn,
   startGoogleSignIn,
 } from '@/features/auth/components/AuthLayout'
 import { useApp } from '@/app/providers/AppContext'
@@ -50,12 +51,23 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   // Seeded from the URL rather than from an effect, which is the same trick the
   // remembered email above uses: it is a one-time read of something outside React
-  // (the query string here, localStorage there). A Google sign-in that failed
-  // comes back to this page as a redirect carrying a code, and the form has to be
-  // able to explain it. Submitting clears it, so typing does not leave a stale
-  // complaint above the fields.
-  const [error, setError] = useState(() => readGoogleAuthError())
+  // (the query string here, localStorage there). A Google or GitHub sign-in that
+  // failed comes back to this page as a redirect carrying a code, and the form
+  // has to be able to explain it. Submitting clears it, so typing does not leave
+  // a stale complaint above the fields.
+  const [error, setError] = useState(() => readAuthError())
   const [loading, setLoading] = useState(false)
+
+  // Shared by both social buttons: a starter resolves false when its health
+  // probe found no backend. Say so here rather than letting the browser navigate
+  // to a dead port, which is what used to happen.
+  const handleSocialStart = async (start) => {
+    if (!(await start())) {
+      setError(
+        'Could not reach the Taskora server. Make sure the backend is running, then try again.'
+      )
+    }
+  }
 
   const submit = async (event) => {
     event.preventDefault()
@@ -175,16 +187,8 @@ export default function Login() {
           </p>
         </div>
         <SocialAuthButtons
-          onGoogle={async () => {
-            // startGoogleSignIn resolves false when its health probe found no
-            // backend. Say so here rather than letting the browser navigate to a
-            // dead port, which is what used to happen.
-            if (!(await startGoogleSignIn())) {
-              setError(
-                'Could not reach the Taskora server. Make sure the backend is running, then try again.'
-              )
-            }
-          }}
+          onGoogle={() => handleSocialStart(startGoogleSignIn)}
+          onGitHub={() => handleSocialStart(startGitHubSignIn)}
           onDisabled={(provider) =>
             pushToast(`${provider} sign-in isn't available yet`, 'info')
           }

@@ -6,6 +6,7 @@ const {
   setOAuthStateCookie,
   clearOAuthStateCookie,
   OAUTH_STATE_COOKIE,
+  GITHUB_OAUTH_STATE_COOKIE,
   REFRESH_TOKEN_MAX_AGE,
 } = require("../../utils/cookie.js");
 const { parseSchema } = require("../../utils/validate.js");
@@ -30,10 +31,20 @@ class AuthController {
   // email/password handlers above must keep working with it absent. Only the two
   // Google handlers below consult it, and they answer 503 rather than throwing
   // when it was never wired in.
-  constructor(authService, auditService = null, googleAuthService = null) {
+  //
+  // `githubAuthService` is a fourth, optional, argument for exactly the same two
+  // reasons: GitHub is a second redirect flow that only its own two handlers
+  // need, and the other providers must keep working when it is not wired in.
+  constructor(
+    authService,
+    auditService = null,
+    googleAuthService = null,
+    githubAuthService = null
+  ) {
     this.authService = authService;
     this.auditService = auditService;
     this.googleAuthService = googleAuthService;
+    this.githubAuthService = githubAuthService;
   }
 
   /**
@@ -59,6 +70,33 @@ class AuthController {
     }
 
     return this.googleAuthService;
+  }
+
+  /**
+   * The GitHub service, or a refusal. Same shape as requireGoogleAuth.
+   */
+  requireGitHubAuth() {
+    if (!this.githubAuthService) {
+      throw new AppError("GitHub sign-in is not available", 503);
+    }
+
+    return this.githubAuthService;
+  }
+
+  /**
+   * The redirect a GitHub failure takes, including the case where there is no
+   * service to build one.
+   *
+   * The handlers below reach this on every path, so an unwired service would
+   * otherwise turn "not available" into a TypeError and a 500 from an
+   * asyncHandler — the opposite of the degraded behaviour the rest of the flow
+   * is built around. `github_unavailable` is a reason the frontend already
+   * renders as a plain message.
+   */
+  githubFailureRedirect(error) {
+    return this.githubAuthService
+      ? this.githubAuthService.failureRedirect(error)
+      : "/login?authError=github_unavailable";
   }
 
   register = asyncHandler(async (req, res) => {
@@ -367,6 +405,106 @@ class AuthController {
       });
 
       return res.redirect(302, this.googleAuthService.failureRedirect(error));
+    }
+  });
+
+  // ==========================================================================
+  // GitHub Sign-In
+  //
+  // The same two handlers, the same reasoning, and deliberately no third session
+  // system. What differs is not the shape of the flow but the two things this
+  // file has to get right because the providers differ:
+  //
+  //   - the state cookie is a separate name on a separate path, so a GitHub
+  //     callback cannot redeem state minted by a Google one (and vice versa);
+  //   - nothing else. Tokens, cookies, audit details and the redirect all go
+  //     through the same calls as above, with "github" as the detail.
+  // ==========================================================================
+
+  /**
+   * Step one: mint a state of our own and send the browser to github.com.
+   */
+  githubStart = asyncHandler(async (req, res) => {
+    try {
+      const { state, authorizationUrl } =
+        this.requireGitHubAuth().beginAuthorization();
+
+      setOAuthStateCookie(res, state, "github");
+
+      return res.redirect(302, authorizationUrl);
+    } catch (error) {
+      // Same reason as googleStart: a browser cannot render a JSON error
+      // envelope, and an unconfigured server should land the person back on the
+      // login page with a sentence.
+      return res.redirect(302, this.githubFailureRedirect(error));
+    }
+  });
+
+  /**
+   * Step two: verify the callback, resolve the account, sign them in.
+   */
+  githubCallback = asyncHandler(async (req, res) => {
+    // Spent either way, before anything else runs, so a replayed callback finds
+    // an empty cookie rather than a still-valid one.
+    clearOAuthStateCookie(res, "github");
+
+    try {
+      const service = this.requireGitHubAuth();
+
+      const result = await service.completeAuthorization({
+        code: req.query.code,
+        state: req.query.state,
+        error: req.query.error,
+        expectedState: req.cookies?.[GITHUB_OAUTH_STATE_COOKIE],
+      });
+
+      // The same factory login(), register() and googleCallback() use: Taskora's
+      // own access/refresh pair, hashed and rotated, with no GitHub token stored.
+      const { accessToken, refreshToken } = await this.authService.createTokens(
+        result.user.id,
+        {},
+        { rememberMe: false }
+      );
+
+      setAuthCookies(res, {
+        accessToken,
+        refreshToken,
+        refreshMaxAge: REFRESH_TOKEN_MAX_AGE,
+      });
+
+      // LOGIN_SUCCEEDED with `provider: "github"` — the provider is a detail,
+      // not a new action, so the admin console's existing login filter covers
+      // every sign-in method with no schema or enum change.
+      await this.audit({
+        actorId: result.user.id,
+        action: AUDIT_ACTIONS.LOGIN_SUCCEEDED,
+        entity: AUDIT_ENTITIES.USER,
+        entityId: result.user.id,
+        details: {
+          email: result.user.email,
+          provider: "github",
+          accountCreated: result.created,
+          accountLinked: result.linkedNow,
+        },
+        req,
+      });
+
+      return res.redirect(302, service.successRedirect());
+    } catch (error) {
+      // Mirrors login() and googleCallback(): only an operational reason reaches
+      // the log, and the browser gets nothing beyond the closed vocabulary the
+      // service chose the code from.
+      await this.audit({
+        action: AUDIT_ACTIONS.LOGIN_FAILED,
+        entity: AUDIT_ENTITIES.USER,
+        details: {
+          provider: "github",
+          reason: error?.isOperational ? error.message : "Unexpected error",
+        },
+        req,
+      });
+
+      return res.redirect(302, this.githubFailureRedirect(error));
     }
   });
 }

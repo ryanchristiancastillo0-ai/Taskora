@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { SmilePlus } from 'lucide-react'
+import { RefreshCw, SmilePlus } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
+import Spinner from '@/components/ui/Spinner'
 import { cx, formatTime } from '@/utils/format'
 import UserProfileMenu from '../UserProfileMenu'
 import MessageAttachments from './MessageAttachments'
@@ -94,6 +95,7 @@ export default function MessageRow({
   senderName,
   senderAvatar,
   onReact,
+  onRetry,
 }) {
   const attachments = message.attachments ?? []
   const hasAttachments = attachments.length > 0
@@ -144,7 +146,10 @@ export default function MessageRow({
                 flushAttachments ? 'p-0' : 'p-2.5',
                 mine
                   ? 'rounded-br-md bg-primary-container text-white shadow-primary-glow'
-                  : 'rounded-bl-md border border-border-subtle bg-surface-soft text-ink'
+                  : 'rounded-bl-md border border-border-subtle bg-surface-soft text-ink',
+                // Half-held until the server confirms it, so an unacked
+                // message never reads as delivered.
+                message.pending && 'opacity-60'
               )}
             >
               <MessageAttachments attachments={attachments} mine={mine} />
@@ -166,7 +171,8 @@ export default function MessageRow({
                 'min-w-0 rounded-2xl px-3.5 py-2.5',
                 mine
                   ? 'rounded-br-md bg-primary-container text-white shadow-primary-glow'
-                  : 'rounded-bl-md border border-border-subtle bg-surface-soft text-ink'
+                  : 'rounded-bl-md border border-border-subtle bg-surface-soft text-ink',
+                message.pending && 'opacity-60'
               )}
             >
               {hasContent && (
@@ -190,12 +196,43 @@ export default function MessageRow({
             </div>
           )}
         </div>
-        <ReactionBar
-          message={message}
-          meId={meId}
-          mine={mine}
-          onReact={onReact}
-        />
+        {/* A message the server has not acknowledged yet cannot take a
+            reaction (there is no id to post it against), so the row swaps the
+            reaction bar for its own delivery state instead. */}
+        {message.pending ? (
+          <div
+            className={cx(
+              'mt-1 flex items-center gap-1.5',
+              mine ? 'justify-end' : 'justify-start'
+            )}
+          >
+            <Spinner className="size-3 text-ink-faint" />
+            <span className="text-[11px] text-ink-faint">Sending…</span>
+          </div>
+        ) : message.failed ? (
+          <div
+            className={cx(
+              'mt-1 flex items-center',
+              mine ? 'justify-end' : 'justify-start'
+            )}
+          >
+            <button
+              type="button"
+              onClick={onRetry}
+              className="flex items-center gap-1.5 rounded-full border border-error/40 bg-danger-soft px-2 py-0.5 text-[11px] font-medium text-error transition-colors hover:bg-danger/15"
+            >
+              <RefreshCw className="size-3" strokeWidth={2} />
+              Failed · Retry
+            </button>
+          </div>
+        ) : (
+          <ReactionBar
+            message={message}
+            meId={meId}
+            mine={mine}
+            onReact={onReact}
+          />
+        )}
       </div>
     </div>
   )

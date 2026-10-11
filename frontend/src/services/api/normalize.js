@@ -125,6 +125,8 @@ export function normalizeUser(user) {
     // so the console can only ever be reached by typing its URL. Defaults to
     // USER so a payload that somehow omits it can never read as an admin.
     role: user.role ?? 'USER',
+    createdAt: user.createdAt ?? null,
+    updatedAt: user.updatedAt ?? null,
   }
 }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, Globe, Info, Moon, Sun, Volume2 } from 'lucide-react'
+import { Bell, Globe, Info, KeyRound, Lock, Mail, Moon, ShieldCheck, Sun, Volume2 } from 'lucide-react'
 import PageHeader from '@/components/layout/PageHeader'
 import Card, { CardHeader } from '@/components/ui/Card'
 import NotificationSoundSelect from '@/components/ui/NotificationSoundSelect'
@@ -10,6 +10,10 @@ import { useApp } from '@/app/providers/AppContext'
 import { useTheme } from '@/app/providers/ThemeProvider'
 import { THEME_OPTIONS } from '@/constants'
 import { cx } from '@/utils/format'
+import ChangeEmailModal from '@/features/user/profile/components/ChangeEmailModal'
+import ChangePasswordModal from '@/features/user/profile/components/ChangePasswordModal'
+import ForgotPasswordModal from '@/features/user/profile/components/ForgotPasswordModal'
+import { SecurityRow } from '@/features/user/settings/pages/Settings'
 
 /**
  * Admin console settings.
@@ -26,6 +30,9 @@ export default function AdminSettings() {
   const { theme, setTheme, compactMode, setCompactMode } = useTheme()
 
   const [saving, setSaving] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showForgotModal, setShowForgotModal] = useState(false)
   const settings = data.settings
 
   const persist = async (patch, notificationPatch) => {
@@ -201,6 +208,51 @@ export default function AdminSettings() {
 
       <Card className="mt-4">
         <CardHeader
+          title="Security"
+          subtitle="Your sign-in details and how we reach you."
+          icon={ShieldCheck}
+        />
+        <div className="divide-y divide-border-subtle">
+          <SecurityRow
+            icon={Info}
+            label="Member since"
+            value={
+              data.user.createdAt
+                ? new Date(data.user.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : '—'
+            }
+          />
+          <SecurityRow
+            icon={Mail}
+            label="Email address"
+            value={data.user.email}
+            hint="We send a code to the new address before switching over."
+            action="Change email"
+            onClick={() => setShowEmailModal(true)}
+          />
+          <SecurityRow
+            icon={Lock}
+            label="Password"
+            hint="Confirm with a 6-digit code we email you."
+            action="Change password"
+            onClick={() => setShowPasswordModal(true)}
+          />
+          <SecurityRow
+            icon={KeyRound}
+            label="Forgot your password?"
+            hint="Signed in but locked out? We'll email you a reset code."
+            action="Reset password"
+            onClick={() => setShowForgotModal(true)}
+          />
+        </div>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader
           title="About this console"
           subtitle="What the admin area can and cannot do."
           icon={Globe}
@@ -220,6 +272,30 @@ export default function AdminSettings() {
           </p>
         </div>
       </Card>
+
+      <ChangeEmailModal
+        open={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        currentEmail={data.user.email}
+        actions={actions}
+        pushToast={pushToast}
+      />
+
+      <ChangePasswordModal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        email={data.user.email}
+        actions={actions}
+        pushToast={pushToast}
+      />
+
+      <ForgotPasswordModal
+        open={showForgotModal}
+        onClose={() => setShowForgotModal(false)}
+        email={data.user.email}
+        actions={actions}
+        pushToast={pushToast}
+      />
     </>
   )
 }

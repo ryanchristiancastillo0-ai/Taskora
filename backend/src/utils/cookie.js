@@ -58,13 +58,21 @@ const clearAuthCookies = (res) => {
 
 // The CSRF value for the Google Sign-In round trip. Deliberately its own cookie
 // rather than a field in the auth pair above: it is written before anybody is
-// authenticated, it is read once, and it must be dropped the moment it has been
+// authenticated, it is read once, and it is dropped the moment it has been
 // spent.
 const OAUTH_STATE_COOKIE = "googleOAuthState";
 
 // Scoped to the two Google routes instead of "/", so a ten-minute,
 // single-purpose value is not attached to every request this backend serves.
 const OAUTH_STATE_PATH = "/api/auth/google";
+
+// GitHub Sign-In is the same round trip against a different provider, and the
+// two attempts must not be able to redeem each other's state: a cookie minted
+// for /google carries no authority over /github, and sharing one name would let
+// a tab sitting on a Google callback satisfy GitHub's check with a value it was
+// never issued. Separate names and separate paths keep them independent.
+const GITHUB_OAUTH_STATE_COOKIE = "githubOAuthState";
+const GITHUB_OAUTH_STATE_PATH = "/api/auth/github";
 
 // Long enough to survive a consent screen and a slow network, short enough that
 // an abandoned attempt stops being replayable the same evening.
@@ -74,33 +82,38 @@ const OAUTH_STATE_MAX_AGE = 10 * 60 * 1000;
 // difference is the whole reason this cookie exists separately.
 //
 // The OAuth callback arrives as a top-level navigation the user started on
-// accounts.google.com. The browser therefore classifies it as cross-site, and a
-// Strict cookie is not carried through it — which would mean the state this
-// server issued never comes back, and the flow fails closed on every single
-// attempt.
+// accounts.google.com (or github.com). The browser therefore classifies it as
+// cross-site, and a Strict cookie is not carried through it — which would mean
+// the state this server issued never comes back, and the flow fails closed on
+// every single attempt.
 //
 // Lax is the value that survives a top-level GET and nothing else: it is still
 // withheld from cross-site POSTs, from a third-party iframe, and from every
 // other request, so it cannot be read by another origin or attached by an
 // attacker to a state-changing call.
-const oauthStateOptions = {
+const stateCookieFor = (provider = "google") =>
+  provider === "github"
+    ? { name: GITHUB_OAUTH_STATE_COOKIE, path: GITHUB_OAUTH_STATE_PATH }
+    : { name: OAUTH_STATE_COOKIE, path: OAUTH_STATE_PATH };
+
+const oauthStateOptions = (provider) => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax",
-  path: OAUTH_STATE_PATH,
-};
+  path: stateCookieFor(provider).path,
+});
 
-const setOAuthStateCookie = (res, state) => {
-  res.cookie(OAUTH_STATE_COOKIE, state, {
-    ...oauthStateOptions,
+const setOAuthStateCookie = (res, state, provider = "google") => {
+  res.cookie(stateCookieFor(provider).name, state, {
+    ...oauthStateOptions(provider),
     maxAge: OAUTH_STATE_MAX_AGE,
   });
 };
 
-const clearOAuthStateCookie = (res) => {
+const clearOAuthStateCookie = (res, provider = "google") => {
   // `path` has to be repeated or it does not match the cookie it is clearing,
   // and the browser quietly keeps the original.
-  res.clearCookie(OAUTH_STATE_COOKIE, oauthStateOptions);
+  res.clearCookie(stateCookieFor(provider).name, oauthStateOptions(provider));
 };
 
 module.exports = {
@@ -109,6 +122,7 @@ module.exports = {
   setOAuthStateCookie,
   clearOAuthStateCookie,
   OAUTH_STATE_COOKIE,
+  GITHUB_OAUTH_STATE_COOKIE,
   OAUTH_STATE_MAX_AGE,
   REMEMBERED_REFRESH_MAX_AGE,
   REFRESH_TOKEN_MAX_AGE,
